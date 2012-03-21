@@ -73,7 +73,7 @@
                 <id>carryel</id>
                 <name>Bongjae Chang</name>
                 <email>bongjae.chang@gmail.com</email>
-                <url>http://weblogs.java.net/blogs/carryel</url>
+                <url>http://www.java.net/author/bongjae-chang</url>
             </developer>
         </developers>
         <licenses>
@@ -299,7 +299,7 @@
         <dependency>
             <groupId>org.glassfish.grizzly</groupId>
             <artifactId>grizzly-framework</artifactId>
-            <version>2.2.1</version>
+            <version>2.2.3</version>
         </dependency>
         <dependency>
             <groupId>org.apache.thrift</groupId>
