@@ -40,13 +40,21 @@
 
 package org.glassfish.grizzly.thrift;
 
+import org.apache.thrift.TServiceClient;
 import org.glassfish.grizzly.Buffer;
+import org.glassfish.grizzly.Connection;
+import org.glassfish.grizzly.Grizzly;
+import org.glassfish.grizzly.attributes.Attribute;
+import org.glassfish.grizzly.attributes.NullaryFunction;
 import org.glassfish.grizzly.filterchain.BaseFilter;
 import org.glassfish.grizzly.filterchain.FilterChainContext;
 import org.glassfish.grizzly.filterchain.NextAction;
+import org.glassfish.grizzly.thrift.client.GrizzlyThriftClient;
+import org.glassfish.grizzly.thrift.client.pool.ObjectPool;
 import org.glassfish.grizzly.utils.DataStructures;
 
 import java.io.IOException;
+import java.net.SocketAddress;
 import java.util.concurrent.BlockingQueue;
 
 /**
@@ -81,10 +89,21 @@ import java.util.concurrent.BlockingQueue;
  *
  * @author Bongjae Chang
  */
-public class ThriftClientFilter extends BaseFilter {
+public class ThriftClientFilter<T extends TServiceClient> extends BaseFilter {
 
-    private final BlockingQueue<Buffer> inputBuffersQueue =
-            DataStructures.getLTQInstance();
+    private final Attribute<ObjectPool<SocketAddress, T>> connectionPoolAttribute =
+            Grizzly.DEFAULT_ATTRIBUTE_BUILDER.createAttribute(GrizzlyThriftClient.CONNECTION_POOL_ATTRIBUTE_NAME);
+    private final Attribute<T> connectionClientAttribute =
+            Grizzly.DEFAULT_ATTRIBUTE_BUILDER.createAttribute(GrizzlyThriftClient.CLIENT_ATTRIBUTE_NAME);
+
+    private static final String INPUT_BUFFERS_QUEUE_ATTRIBUTE_NAME = "GrizzlyThriftClient.inputBuffersQueue";
+    private final Attribute<BlockingQueue<Buffer>> inputBuffersQueueAttribute =
+            Grizzly.DEFAULT_ATTRIBUTE_BUILDER.createAttribute(INPUT_BUFFERS_QUEUE_ATTRIBUTE_NAME,
+                    new NullaryFunction<BlockingQueue<Buffer>>() {
+                        public BlockingQueue<Buffer> evaluate() {
+                            return DataStructures.getLTQInstance();
+                        }
+                    });
 
     @Override
     public NextAction handleRead(FilterChainContext ctx) throws IOException {
@@ -95,11 +114,44 @@ public class ThriftClientFilter extends BaseFilter {
         if (!input.hasRemaining()) {
             return ctx.getStopAction();
         }
+        final Connection connection = ctx.getConnection();
+        if (connection == null) {
+            throw new IOException("connection must not be null");
+        }
+        final BlockingQueue<Buffer> inputBuffersQueue = inputBuffersQueueAttribute.get(connection);
+        if (inputBuffersQueue == null) {
+            throw new IOException("inputBuffersQueue must not be null");
+        }
         inputBuffersQueue.offer(input);
         return ctx.getStopAction();
     }
 
-    public final BlockingQueue<Buffer> getInputBuffersQueue() {
-        return inputBuffersQueue;
+    @SuppressWarnings("unchecked")
+    @Override
+    public NextAction handleClose(FilterChainContext ctx) throws IOException {
+        final Connection<SocketAddress> connection = ctx.getConnection();
+        if (connection != null) {
+            final ObjectPool<SocketAddress, T> connectionPool = connectionPoolAttribute.remove(connection);
+            final T client = connectionClientAttribute.remove(connection);
+            if (connectionPool != null && client != null) {
+                try {
+                    connectionPool.removeObject(connection.getPeerAddress(), client);
+                } catch (Exception ignore) {
+                }
+            }
+            final BlockingQueue<Buffer> inputBuffersQueue = inputBuffersQueueAttribute.get(connection);
+            if (inputBuffersQueue != null) {
+                inputBuffersQueue.clear();
+                inputBuffersQueueAttribute.remove(connection);
+            }
+        }
+        return ctx.getInvokeAction();
+    }
+
+    public final BlockingQueue<Buffer> getInputBuffersQueue(final Connection connection) {
+        if (connection == null) {
+            return null;
+        }
+        return inputBuffersQueueAttribute.get(connection);
     }
 }

@@ -81,7 +81,7 @@ import java.io.IOException;
  */
 public class ThriftServerFilter extends BaseFilter {
 
-    private static final int THRIFT_DEFAULT_RESPONSE_BUFFER_SIZE = 4096;
+    private static final int THRIFT_DEFAULT_RESPONSE_BUFFER_SIZE = 40 * 1024; // 40k;
 
     private final TProcessor processor;
     private final TProtocolFactory protocolFactory;

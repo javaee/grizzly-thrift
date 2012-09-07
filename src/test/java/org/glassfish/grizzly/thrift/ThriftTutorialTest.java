@@ -40,7 +40,6 @@
 
 package org.glassfish.grizzly.thrift;
 
-import java.util.logging.Level;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -65,6 +64,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import shared.SharedStruct;

@@ -49,7 +49,9 @@ import org.glassfish.grizzly.utils.BufferOutputStream;
 
 import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.glassfish.grizzly.Processor;
 import org.glassfish.grizzly.filterchain.FilterChain;
@@ -64,13 +66,18 @@ import org.glassfish.grizzly.filterchain.FilterChain;
  */
 public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
 
-    private static final int DEFAULT_READ_TIMEOUT_Millis = -1; // never timed out
+    private static final long DEFAULT_READ_TIMEOUT_MILLIS = -1L; // never timed out
+    private static final long DEFAULT_WRITE_TIMEOUT_MILLIS = -1L; // never timed out
 
     public static TGrizzlyClientTransport create(final Connection connection) {
-        return create(connection, DEFAULT_READ_TIMEOUT_Millis);
+        return create(connection, DEFAULT_READ_TIMEOUT_MILLIS);
     }
 
-    public static TGrizzlyClientTransport create(final Connection connection, final int readTimeoutMillis) {
+    public static TGrizzlyClientTransport create(final Connection connection, final long readTimeoutMillis) {
+        return create(connection, readTimeoutMillis, DEFAULT_WRITE_TIMEOUT_MILLIS);
+    }
+
+    public static TGrizzlyClientTransport create(final Connection connection, final long readTimeoutMillis, final long writeTimeoutMillis) {
         if (connection == null) {
             throw new IllegalStateException("Connection should not be null");
         }
@@ -95,26 +102,28 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
             throw new IllegalStateException("thriftClientFilter should not be null");
         }
 
-        final BlockingQueue<Buffer> inputBuffersQueue = thriftClientFilter.getInputBuffersQueue();
+        final BlockingQueue<Buffer> inputBuffersQueue = thriftClientFilter.getInputBuffersQueue(connection);
 
         if (inputBuffersQueue == null) {
             throw new IllegalStateException("inputBuffersQueue should not be null");
         }
 
-        return new TGrizzlyClientTransport(connection, inputBuffersQueue, readTimeoutMillis);
+        return new TGrizzlyClientTransport(connection, inputBuffersQueue, readTimeoutMillis, writeTimeoutMillis);
     }
 
     private Buffer input = null;
     private final Connection connection;
     private final BlockingQueue<Buffer> inputBuffersQueue;
     private final BufferOutputStream outputStream;
-    private final int readTimeoutMillis;
+    private final long readTimeoutMillis;
+    private final long writeTimeoutMillis;
 
     private TGrizzlyClientTransport(final Connection connection,
-            final BlockingQueue<Buffer> inputBuffersQueue,
-            final int readTimeoutMillis) {
+                                    final BlockingQueue<Buffer> inputBuffersQueue,
+                                    final long readTimeoutMillis,
+                                    final long writeTimeoutMillis) {
         this.connection = connection;
-        
+
         this.inputBuffersQueue = inputBuffersQueue;
         this.outputStream = new BufferOutputStream(
                 connection.getTransport().getMemoryManager()) {
@@ -128,6 +137,7 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
             }
         };
         this.readTimeoutMillis = readTimeoutMillis;
+        this.writeTimeoutMillis = writeTimeoutMillis;
     }
 
     @Override
@@ -145,7 +155,7 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
         }
         try {
             final GrizzlyFuture closeFuture = connection.close();
-            closeFuture.get(10, TimeUnit.SECONDS);
+            closeFuture.get(3, TimeUnit.SECONDS);
         } catch (Exception ignore) {
         }
     }
@@ -154,12 +164,29 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
     @SuppressWarnings("unchecked")
     public void flush() throws TTransportException {
         checkConnectionOpen();
-        
+
         final Buffer output = outputStream.getBuffer();
         output.trim();
         outputStream.reset();
 
-        connection.write(output);
+        try {
+            final GrizzlyFuture future = connection.write(output);
+            if (writeTimeoutMillis > 0) {
+                future.get(writeTimeoutMillis, TimeUnit.MILLISECONDS);
+            } else {
+                future.get();
+            }
+        } catch (TimeoutException te) {
+            throw new TTimedoutException(te);
+        } catch (ExecutionException ee) {
+            throw new TTransportException(ee);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    public Connection getGrizzlyConnection() {
+        return connection;
     }
 
     @Override
@@ -172,13 +199,13 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
             localInput = getLocalInput(readTimeoutMillis);
         }
         if (localInput == null) {
-            throw new TTransportException( "timed out while reading the input buffer");
+            throw new TTimedoutException( "timed out while reading the input buffer");
         }
         this.input = localInput;
         return localInput;
     }
 
-    private Buffer getLocalInput(final int readTimeoutMillis) throws TTransportException {
+    private Buffer getLocalInput(final long readTimeoutMillis) throws TTransportException {
         final Buffer localInput;
         try {
             if (readTimeoutMillis < 0) {
