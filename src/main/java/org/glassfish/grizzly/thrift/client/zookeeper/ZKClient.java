@@ -169,14 +169,14 @@ public class ZKClient {
      * <p/>
      * this method will wait for {@link Watcher.Event.KeeperState#SyncConnected} from the zookeeper server.
      *
-     * @throws java.io.IOException          the io exception of internal ZooKeeper
+     * @throws IOException          the io exception of internal ZooKeeper
      * @throws InterruptedException the interrupted exception of internal ZooKeeper
      */
-    public void connect() throws IOException, InterruptedException {
+    public boolean connect() throws IOException, InterruptedException {
         lock.lock();
         try {
             if (connected) {
-                return;
+                return true;
             }
             zooKeeper = new ZooKeeper(zooKeeperServerList,
                     (int) sessionTimeoutInMillis,
@@ -196,6 +196,7 @@ public class ZKClient {
                     logger.log(Level.FINE, "connected the zookeeper server successfully");
                 }
             }
+            return connected;
         } finally {
             lock.unlock();
         }
@@ -235,7 +236,12 @@ public class ZKClient {
                 return;
             }
             close();
-            connect();
+            if (connect()) {
+                // register ephemeral node and watcher again
+                for (final String regionName : listenerMap.keySet()) {
+                    registerEphemeralNodeAndWatcher(regionName);
+                }
+            }
         } finally {
             lock.unlock();
         }
@@ -287,7 +293,6 @@ public class ZKClient {
         final String currentRegionPath = basePath + normalizePath(regionName);
         createWhenThereIsNoNode(currentRegionPath, NO_DATA, CreateMode.PERSISTENT); // ensure my region path
         createWhenThereIsNoNode(currentRegionPath + CURRENT_PATH, NO_DATA, CreateMode.PERSISTENT); // ensure nodes path
-        createWhenThereIsNoNode(currentRegionPath + CURRENT_PATH + uniqueIdPath, NO_DATA, CreateMode.EPHEMERAL); // register own node path
         createWhenThereIsNoNode(currentRegionPath + PARTICIPANTS_PATH, NO_DATA, CreateMode.PERSISTENT); // ensure participants path
 
         final String currentDataPath = currentRegionPath + DATA_PATH;
@@ -320,13 +325,22 @@ public class ZKClient {
                 }
             }
         }
-
-        // register the watcher for detecting the data's changes
-        exists(currentDataPath, new RegionWatcher(regionName));
+        registerEphemeralNodeAndWatcher(regionName);
         if (logger.isLoggable(Level.FINE)) {
             logger.log(Level.FINE, "the path \"{0}\" will be watched. name={1}, regionName={2}", new Object[]{name, currentDataPath, regionName});
         }
         return currentDataPath;
+    }
+
+    private void registerEphemeralNodeAndWatcher(final String regionName) {
+        if (regionName == null) {
+            return;
+        }
+        final String currentRegionPath = basePath + normalizePath(regionName);
+        final String currentDataPath = currentRegionPath + DATA_PATH;
+        createWhenThereIsNoNode(currentRegionPath + CURRENT_PATH + uniqueIdPath, NO_DATA, CreateMode.EPHEMERAL); // register own node path
+        // register the watcher for detecting the data's changes
+        exists(currentDataPath, new RegionWatcher(regionName));
     }
 
     private boolean createWhenThereIsNoNode(final String path, final byte[] data, final CreateMode createMode) {
