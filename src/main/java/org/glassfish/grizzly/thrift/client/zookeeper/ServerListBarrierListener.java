@@ -141,18 +141,18 @@ public class ServerListBarrierListener implements BarrierListener {
             final Set<SocketAddress> remoteServers = getAddressesFromStringList(remoteDataString);
             if (!remoteServers.isEmpty()) {
                 if (thriftClient != null) {
-                    final Set<SocketAddress> added = new HashSet<SocketAddress>();
-                    final Set<SocketAddress> removed = new HashSet<SocketAddress>();
-                    for (final SocketAddress local : localServerSet) {
-                        if (!remoteServers.remove(local)) {
-                            removed.add(local);
+                    final Set<SocketAddress> shouldBeAdded = new HashSet<SocketAddress>();
+                    final Set<SocketAddress> shouldBeRemoved = new HashSet<SocketAddress>();
+                    for (final SocketAddress remoteServer : remoteServers) {
+                        if (!localServerSet.remove(remoteServer)) {
+                            shouldBeAdded.add(remoteServer);
                         }
                     }
-                    added.addAll(remoteServers);
-                    for (final SocketAddress address : added) {
+                    shouldBeRemoved.addAll(localServerSet);
+                    for (final SocketAddress address : shouldBeAdded) {
                         thriftClient.addServer(address);
                     }
-                    for (final SocketAddress address : removed) {
+                    for (final SocketAddress address : shouldBeRemoved) {
                         thriftClient.removeServer(address);
                     }
                     // refresh local
