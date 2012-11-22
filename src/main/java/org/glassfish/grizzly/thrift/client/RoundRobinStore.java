@@ -116,7 +116,11 @@ public class RoundRobinStore<T> {
     public T get() {
         rLock.lock();
         try {
-            final int index = (counter++ & 0x7fffffff) % valueList.size();
+            final int valueSize = valueList.size();
+            if (valueSize <= 0) {
+                return null;
+            }
+            final int index = (counter++ & 0x7fffffff) % valueSize;
             return valueList.get(index);
         } finally {
             rLock.unlock();
