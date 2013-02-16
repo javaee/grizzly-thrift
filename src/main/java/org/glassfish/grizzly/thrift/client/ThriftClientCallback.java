@@ -64,5 +64,5 @@ import org.apache.thrift.TServiceClient;
  */
 public interface ThriftClientCallback<T extends TServiceClient, U> {
 
-    U call(final T client) throws TException;
+    U call(final T client) throws Exception;
 }

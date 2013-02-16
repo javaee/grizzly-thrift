@@ -102,6 +102,7 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
             throw new IllegalStateException("thriftClientFilter should not be null");
         }
 
+        @SuppressWarnings("unchecked")
         final BlockingQueue<Buffer> inputBuffersQueue = thriftClientFilter.getInputBuffersQueue(connection);
 
         if (inputBuffersQueue == null) {

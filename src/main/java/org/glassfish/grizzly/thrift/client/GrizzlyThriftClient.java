@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2013 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -40,7 +40,6 @@
 
 package org.glassfish.grizzly.thrift.client;
 
-import org.apache.thrift.TException;
 import org.apache.thrift.TServiceClient;
 import org.apache.thrift.TServiceClientFactory;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -70,6 +69,7 @@ import org.glassfish.grizzly.thrift.client.zookeeper.ZooKeeperSupportThriftClien
 import org.glassfish.grizzly.nio.transport.TCPNIOConnectorHandler;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Method;
 import java.net.SocketAddress;
@@ -544,7 +544,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
     }
 
     @Override
-    public <U> U execute(final ThriftClientCallback<T, U> callback) throws InterruptedException, TException {
+    public <U> U execute(final ThriftClientCallback<T, U> callback) throws Exception {
         for (int i = 0; i <= retryCount; i++) {
             T client;
             final SocketAddress address = roundRobinStore.get();
@@ -621,7 +621,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
                 }
             }
         }
-        throw new TException("failed to get the valid client");
+        throw new IOException("failed to get the valid client");
     }
 
     private boolean validateClient(final T client) {
@@ -917,9 +917,9 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
         /**
          * Set health monitor's interval
          * <p/>
-         * This thrift client will schedule {@link HealthMonitorTask} with this interval.
-         * {@link HealthMonitorTask} will check the failure servers periodically and detect the revived server.
-         * If the given parameter is negative, this thrift client never schedules {@link HealthMonitorTask}
+         * This thrift client will schedule HealthMonitorTask with this interval.
+         * HealthMonitorTask will check the failure servers periodically and detect the revived server.
+         * If the given parameter is negative, this thrift client never schedules HealthMonitorTask
          * so this behavior is similar to seting {@code failover} to be false.
          * Default is 60.
          *

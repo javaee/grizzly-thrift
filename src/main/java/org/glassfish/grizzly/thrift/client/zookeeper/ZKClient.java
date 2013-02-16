@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2013 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -760,7 +760,7 @@ public class ZKClient {
                         if (!aliveNodesExceptMyself.isEmpty() || !toBeCompleted.isEmpty()) {
                             if (logger.isLoggable(Level.WARNING)) {
                                 logger.log(Level.WARNING,
-                                        "the central data deleted in the remote zookeeper server while preparing to syncronize the data. name={0}, regionName={1}",
+                                        "the central data deleted in the remote zookeeper server while preparing to synchronize the data. name={0}, regionName={1}",
                                         new Object[]{name, regionName});
                             }
                             aliveNodesExceptMyself.clear();

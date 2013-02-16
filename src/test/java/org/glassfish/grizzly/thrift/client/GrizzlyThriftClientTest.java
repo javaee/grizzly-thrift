@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2013 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -40,7 +40,6 @@
 
 package org.glassfish.grizzly.thrift.client;
 
-import org.apache.thrift.TException;
 import org.glassfish.grizzly.filterchain.FilterChainBuilder;
 import org.glassfish.grizzly.filterchain.TransportFilter;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
@@ -52,7 +51,6 @@ import org.junit.Assert;
 import org.junit.Test;
 import shared.SharedStruct;
 import tutorial.Calculator;
-import tutorial.InvalidOperation;
 import tutorial.Operation;
 import tutorial.Work;
 
@@ -79,6 +77,7 @@ public class GrizzlyThriftClientTest {
 
     @Test
     public void testBasic() throws Exception {
+        @SuppressWarnings("unchecked")
         final TCPNIOTransport transport = createThriftServer(PORT, new Calculator.Processor(new CalculatorHandler()));
 
         // create manager
@@ -107,8 +106,11 @@ public class GrizzlyThriftClientTest {
 
     @Test
     public void testFailover() throws Exception {
+        @SuppressWarnings("unchecked")
         final TCPNIOTransport thriftServer = createThriftServer(PORT, new Calculator.Processor(new CalculatorHandler()));
+        @SuppressWarnings("unchecked")
         final TCPNIOTransport thriftServerForFailover = createThriftServer(FAILOVER_PORT, new Calculator.Processor(new CalculatorHandler()));
+        @SuppressWarnings("unchecked")
         final TCPNIOTransport thriftServerForFailedServicePort = createThriftServer(FAILED_SERVICE_PORT, new Calculator.Processor(new CalculatorHandler() {
             @Override
             public void ping() {
@@ -153,7 +155,7 @@ public class GrizzlyThriftClientTest {
                 // execute
                 Integer result = calculatorThriftClient.execute(new ThriftClientCallback<Calculator.Client, Integer>() {
                     @Override
-                    public Integer call(Calculator.Client client) throws TException {
+                    public Integer call(Calculator.Client client) throws Exception {
                         return client.add(1, 2);
                     }
                 });
@@ -175,6 +177,7 @@ public class GrizzlyThriftClientTest {
 
     @Test
     public void testMultipleClients() throws Exception {
+        @SuppressWarnings("unchecked")
         final TCPNIOTransport thriftServer = createThriftServer(PORT, new Calculator.Processor(new CalculatorHandler()));
 
         // create manager
@@ -227,7 +230,8 @@ public class GrizzlyThriftClientTest {
 
     @Test
     public void testHealthMonitor() throws Exception {
-        TCPNIOTransport thriftServer = createThriftServer(PORT, new Calculator.Processor(new CalculatorHandler()));
+        @SuppressWarnings("unchecked")
+        final TCPNIOTransport thriftServer = createThriftServer(PORT, new Calculator.Processor(new CalculatorHandler()));
 
         // create manager
         final GrizzlyThriftClientManager manager = new GrizzlyThriftClientManager.Builder().build();
@@ -248,7 +252,7 @@ public class GrizzlyThriftClientTest {
         // success
         Integer result = calculatorThriftClient.execute(new ThriftClientCallback<Calculator.Client, Integer>() {
             @Override
-            public Integer call(Calculator.Client client) throws TException {
+            public Integer call(Calculator.Client client) throws Exception {
                 return client.add(1, 2);
             }
         });
@@ -260,19 +264,19 @@ public class GrizzlyThriftClientTest {
         Thread.sleep(200);
 
         try {
-            result = calculatorThriftClient.execute(new ThriftClientCallback<Calculator.Client, Integer>() {
+            calculatorThriftClient.execute(new ThriftClientCallback<Calculator.Client, Integer>() {
                 @Override
-                public Integer call(Calculator.Client client) throws TException {
+                public Integer call(Calculator.Client client) throws Exception {
                     return client.add(1, 2);
                 }
             });
-        } catch (TException te) {
-
+        } catch (Exception te) {
         }
         Assert.assertTrue(!calculatorThriftClient.isInServerList(address));
 
         // revival
-        thriftServer = createThriftServer(PORT, new Calculator.Processor(new CalculatorHandler()));
+        @SuppressWarnings("unchecked")
+        final TCPNIOTransport thriftServer2 = createThriftServer(PORT, new Calculator.Processor(new CalculatorHandler()));
 
         // wait for recovery
         Thread.sleep(2000);
@@ -285,7 +289,7 @@ public class GrizzlyThriftClientTest {
         manager.removeThriftClient("Calculator");
         manager.shutdown();
 
-        thriftServer.stop();
+        thriftServer2.stop();
     }
 
     private static TCPNIOTransport createThriftServer(final int port, final Calculator.Processor tprocessor) throws IOException {
@@ -300,10 +304,10 @@ public class GrizzlyThriftClientTest {
         return transport;
     }
 
-    private static void perform(final ThriftClient<Calculator.Client> calculatorThriftClient) throws TException, InterruptedException {
+    private static void perform(final ThriftClient<Calculator.Client> calculatorThriftClient) throws Exception {
         Integer result = calculatorThriftClient.execute(new ThriftClientCallback<Calculator.Client, Integer>() {
             @Override
-            public Integer call(Calculator.Client client) throws TException {
+            public Integer call(Calculator.Client client) throws Exception {
                 return client.add(1, 2);
             }
         });
@@ -311,23 +315,19 @@ public class GrizzlyThriftClientTest {
 
         result = calculatorThriftClient.execute(new ThriftClientCallback<Calculator.Client, Integer>() {
             @Override
-            public Integer call(Calculator.Client client) throws TException {
+            public Integer call(Calculator.Client client) throws Exception {
                 final Work work = new Work();
                 work.op = Operation.DIVIDE;
                 work.num1 = 25;
                 work.num2 = 5;
-                try {
-                    return client.calculate(1, work);
-                } catch (InvalidOperation io) {
-                    throw new TException(io);
-                }
+                return client.calculate(1, work);
             }
         });
         assertTrue(result == 5);
 
         final SharedStruct log = calculatorThriftClient.execute(new ThriftClientCallback<Calculator.Client, SharedStruct>() {
             @Override
-            public SharedStruct call(Calculator.Client client) throws TException {
+            public SharedStruct call(Calculator.Client client) throws Exception {
                 return client.getStruct(1);
             }
         });
