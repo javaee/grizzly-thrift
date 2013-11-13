@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2011 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011-2013 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -45,13 +45,13 @@ import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.Grizzly;
 import org.glassfish.grizzly.attributes.Attribute;
-import org.glassfish.grizzly.attributes.NullaryFunction;
 import org.glassfish.grizzly.filterchain.BaseFilter;
 import org.glassfish.grizzly.filterchain.FilterChainContext;
 import org.glassfish.grizzly.filterchain.NextAction;
 import org.glassfish.grizzly.thrift.client.GrizzlyThriftClient;
 import org.glassfish.grizzly.thrift.client.pool.ObjectPool;
 import org.glassfish.grizzly.utils.DataStructures;
+import org.glassfish.grizzly.utils.NullaryFunction;
 
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -83,7 +83,7 @@ import java.util.concurrent.BlockingQueue;
  * // release
  * ttransport.close();
  * connection.close();
- * transport.stop();
+ * transport.shutdownNow();
  * }
  * </pre>
  *
@@ -99,7 +99,7 @@ public class ThriftClientFilter<T extends TServiceClient> extends BaseFilter {
     private static final String INPUT_BUFFERS_QUEUE_ATTRIBUTE_NAME = "GrizzlyThriftClient.inputBuffersQueue";
     private final Attribute<BlockingQueue<Buffer>> inputBuffersQueueAttribute =
             Grizzly.DEFAULT_ATTRIBUTE_BUILDER.createAttribute(INPUT_BUFFERS_QUEUE_ATTRIBUTE_NAME,
-                    new NullaryFunction<BlockingQueue<Buffer>>() {
+                    (NullaryFunction<BlockingQueue<Buffer>>) new NullaryFunction<BlockingQueue<Buffer>>() {
                         public BlockingQueue<Buffer> evaluate() {
                             return DataStructures.getLTQInstance();
                         }

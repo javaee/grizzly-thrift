@@ -101,7 +101,7 @@ public class GrizzlyThriftClientTest {
         manager.removeThriftClient("Calculator");
         manager.shutdown();
 
-        transport.stop();
+        transport.shutdownNow();
     }
 
     @Test
@@ -169,9 +169,9 @@ public class GrizzlyThriftClientTest {
             manager.removeThriftClient("Calculator");
             manager.shutdown();
 
-            thriftServer.stop();
-            thriftServerForFailover.stop();
-            thriftServerForFailedServicePort.stop();
+            thriftServer.shutdownNow();
+            thriftServerForFailover.shutdownNow();
+            thriftServerForFailedServicePort.shutdownNow();
         }
     }
 
@@ -224,7 +224,7 @@ public class GrizzlyThriftClientTest {
             manager.removeThriftClient("Calculator");
             manager.shutdown();
 
-            thriftServer.stop();
+            thriftServer.shutdownNow();
         }
     }
 
@@ -260,7 +260,7 @@ public class GrizzlyThriftClientTest {
         Assert.assertTrue(calculatorThriftClient.isInServerList(address));
 
         // stop the server
-        thriftServer.stop();
+        thriftServer.shutdownNow();
         Thread.sleep(200);
 
         try {
@@ -289,7 +289,7 @@ public class GrizzlyThriftClientTest {
         manager.removeThriftClient("Calculator");
         manager.shutdown();
 
-        thriftServer2.stop();
+        thriftServer2.shutdownNow();
     }
 
     private static TCPNIOTransport createThriftServer(final int port, final Calculator.Processor tprocessor) throws IOException {
