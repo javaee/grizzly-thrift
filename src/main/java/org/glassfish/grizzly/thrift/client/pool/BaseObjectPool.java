@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2014 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -40,11 +40,12 @@
 
 package org.glassfish.grizzly.thrift.client.pool;
 
+import org.glassfish.grizzly.Grizzly;
 import org.glassfish.grizzly.utils.DataStructures;
 
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
@@ -52,6 +53,8 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * The basic implementation of {@link ObjectPool} for high performance and scalability
@@ -61,6 +64,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author Bongjae Chang
  */
 public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
+
+    private static final Logger logger = Grizzly.logger(BaseObjectPool.class);
 
     // retry counts for borrowing an object if it is not valid
     private static final int MAX_VALIDATION_RETRY_COUNT = 3;
@@ -73,8 +78,8 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
     private final boolean disposable;
     private final long keepAliveTimeoutInSecs;
 
-    private final ConcurrentHashMap<K, QueuePool<V>> keyedObjectPool = new ConcurrentHashMap<K, QueuePool<V>>();
-    private final ConcurrentHashMap<V, K> managedActiveObjects = new ConcurrentHashMap<V, K>();
+    private final ConcurrentMap<K, QueuePool<V>> keyedObjectPool = DataStructures.getConcurrentMap();
+    private final ConcurrentMap<V, K> managedActiveObjects = DataStructures.getConcurrentMap();
     private final AtomicBoolean destroyed = new AtomicBoolean();
     private final ScheduledExecutorService scheduledExecutor;
     private final ScheduledFuture<?> scheduledFuture;
@@ -357,7 +362,10 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         }
         final K managed = managedActiveObjects.remove(value);
         final QueuePool<V> pool = keyedObjectPool.get(key);
-        if (pool == null || managed == null) {
+        if (pool == null) {
+            if (logger.isLoggable(Level.FINEST)) {
+                logger.log(Level.FINEST, "the pool was not found. managed={0}, key={1}, value={2}", new Object[]{managed, key, value});
+            }
             try {
                 factory.destroyObject(key, value);
             } catch (Exception ignore) {
@@ -365,7 +373,11 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
             return;
         }
 
-        pool.queue.remove(value);
+        final boolean removed = pool.queue.remove(value);
+        if (logger.isLoggable(Level.FINEST)) {
+            logger.log(Level.FINEST, "pool.queue.remove={0}, key={1}, value={2}", new Object[]{removed, key, value});
+        }
+
         try {
             factory.destroyObject(key, value);
         } catch (Exception ignore) {
@@ -517,9 +529,9 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
     }
 
     /**
-     * For storing idle objects, {@link java.util.concurrent.BlockingQueue} will be used.
-     * If this pool has max size(bounded pool), it uses {@link java.util.concurrent.LinkedBlockingQueue}.
-     * Otherwise, this pool uses unbounded queue like {@link java.util.concurrent.LinkedBlockingQueue} for idle objects.
+     * For storing idle objects, {@link BlockingQueue} will be used.
+     * If this pool has max size(bounded pool), it uses {@link LinkedBlockingQueue}.
+     * Otherwise, this pool uses unbounded queue like {@link LinkedBlockingQueue} for idle objects.
      */
     private static class QueuePool<V> {
         private final AtomicInteger poolSizeHint = new AtomicInteger();
@@ -592,7 +604,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         /**
          * BaseObjectPool's builder constructor
          *
-         * @param factory {@link org.glassfish.grizzly.thrift.client.pool.PoolableObjectFactory} which is for creating, validating and destroying an object
+         * @param factory {@link PoolableObjectFactory} which is for creating, validating and destroying an object
          */
         public Builder(PoolableObjectFactory<K, V> factory) {
             this.factory = factory;
@@ -629,7 +641,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         }
 
         /**
-         * Set whether this pool should validate the object by {@link org.glassfish.grizzly.thrift.client.pool.PoolableObjectFactory#validateObject} before returning a borrowed object to the user
+         * Set whether this pool should validate the object by {@link PoolableObjectFactory#validateObject} before returning a borrowed object to the user
          * <p/>
          * Default is false.
          *
@@ -642,7 +654,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         }
 
         /**
-         * Set whether this pool should validate the object by {@link org.glassfish.grizzly.thrift.client.pool.PoolableObjectFactory#validateObject} before returning a borrowed object to the pool
+         * Set whether this pool should validate the object by {@link PoolableObjectFactory#validateObject} before returning a borrowed object to the pool
          * <p/>
          * Default is false.
          *
@@ -672,9 +684,9 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         /**
          * Set the KeepAliveTimeout of this pool
          * <p/>
-         * This pool will schedule {@link EvictionTask} with this interval.
-         * {@link EvictionTask} will evict idle objects if this pool has more than min objects.
-         * If the given parameter is negative, this pool never schedules {@link EvictionTask}.
+         * This pool will schedule EvictionTask with this interval.
+         * EvictionTask will evict idle objects if this pool has more than min objects.
+         * If the given parameter is negative, this pool never schedules EvictionTask.
          * Default is 1800.
          *
          * @param keepAliveTimeoutInSecs KeepAliveTimeout in seconds

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2011-2013 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011-2014 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -56,6 +56,8 @@ import org.glassfish.grizzly.utils.NullaryFunction;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.util.concurrent.BlockingQueue;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * ThriftClientFilter is a client-side filter for Thrift RPC processors.
@@ -90,6 +92,8 @@ import java.util.concurrent.BlockingQueue;
  * @author Bongjae Chang
  */
 public class ThriftClientFilter<T extends TServiceClient> extends BaseFilter {
+
+    private static final Logger logger = Grizzly.logger(ThriftClientFilter.class);
 
     private final Attribute<ObjectPool<SocketAddress, T>> connectionPoolAttribute =
             Grizzly.DEFAULT_ATTRIBUTE_BUILDER.createAttribute(GrizzlyThriftClient.CONNECTION_POOL_ATTRIBUTE_NAME);
@@ -136,6 +140,9 @@ public class ThriftClientFilter<T extends TServiceClient> extends BaseFilter {
             if (connectionPool != null && client != null) {
                 try {
                     connectionPool.removeObject(connection.getPeerAddress(), client);
+                    if (logger.isLoggable(Level.FINE)) {
+                        logger.log(Level.FINE, "the connection has been removed in pool. connection={0}", connection);
+                    }
                 } catch (Exception ignore) {
                 }
             }
