@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2011-2013 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011-2014 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -51,6 +51,9 @@ import org.glassfish.grizzly.SocketConnectorHandler;
 import org.glassfish.grizzly.filterchain.FilterChain;
 import org.glassfish.grizzly.filterchain.FilterChainBuilder;
 import org.glassfish.grizzly.filterchain.TransportFilter;
+import org.glassfish.grizzly.http.HttpClientFilter;
+import org.glassfish.grizzly.http.server.HttpServer;
+import org.glassfish.grizzly.http.server.NetworkListener;
 import org.glassfish.grizzly.nio.transport.TCPNIOConnectorHandler;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransportBuilder;
@@ -67,6 +70,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.glassfish.grizzly.thrift.http.ThriftHttpClientFilter;
+import org.glassfish.grizzly.thrift.http.ThriftHttpHandler;
 import shared.SharedStruct;
 import tutorial.Calculator;
 import tutorial.InvalidOperation;
@@ -178,6 +183,74 @@ public class ThriftTutorialTest {
             }
 
             transport.shutdownNow();
+        }
+    }
+
+    @Test
+    public void testHttpSimplePackets() throws Exception {
+        final int clientsNum = Runtime.getRuntime().availableProcessors();
+        final Integer executionNum = 2;
+
+        logger.log(Level.INFO, "** IOStrategy = {0}, clientsNum = {1}, executionNum = {2}", new Object[]{strategy, clientsNum, executionNum});
+
+        Connection connection = null;
+
+        // CalculatorHandler class is thrift's tutorial code.
+        // shared.* and tutorial.*' classes are thrift's generated codes based on shared.thrift and tutorial.thrift files in thrift tutorial.
+        final CalculatorHandler handler = new CalculatorHandler();
+        final Calculator.Processor tprocessor = new Calculator.Processor(handler);
+        final HttpServer server = new HttpServer();
+        final NetworkListener listener = new NetworkListener("grizzly-thrift-http", NetworkListener.DEFAULT_NETWORK_HOST, PORT);
+        server.addListener(listener);
+        server.getServerConfiguration().addHttpHandler(new ThriftHttpHandler(tprocessor), "/test");
+        server.start();
+
+        final TCPNIOTransport transport = TCPNIOTransportBuilder.newInstance().setIOStrategy(strategy).build();
+        try {
+            transport.start();
+
+            for (int i = 0; i < clientsNum; i++) {
+                final FilterChainBuilder clientFilterChainBuilder = FilterChainBuilder.stateless();
+                clientFilterChainBuilder.add(new TransportFilter());
+                clientFilterChainBuilder.add(new HttpClientFilter());
+                clientFilterChainBuilder.add(new ThriftHttpClientFilter("/test"));
+                clientFilterChainBuilder.add(new ThriftClientFilter());
+
+                final FilterChain clientChain = clientFilterChainBuilder.build();
+                final SocketConnectorHandler connectorHandler =
+                        TCPNIOConnectorHandler.builder(transport)
+                                .processor(clientChain)
+                                .build();
+
+                final Future<Connection> connectFuture = connectorHandler.connect(
+                        new InetSocketAddress("localhost", PORT));
+
+                connection = connectFuture.get(10, TimeUnit.SECONDS);
+                assertTrue(connection != null);
+
+                final TTransport ttransport = TGrizzlyClientTransport.create(connection);
+                final TProtocol tprotocol = new TBinaryProtocol(ttransport);
+                final Calculator.Client client = new Calculator.Client(tprotocol);
+
+                for (int j = 0; j < executionNum; j++) {
+                    try {
+                        perform(client);
+                    } catch (TException te) {
+                        logger.warning(te.getMessage());
+                        fail();
+                    }
+                }
+                ttransport.close();
+                connection.closeSilently();
+                connection = null;
+            }
+        } finally {
+            if (connection != null) {
+                connection.closeSilently();
+            }
+
+            transport.shutdownNow();
+            server.shutdownNow();
         }
     }
 

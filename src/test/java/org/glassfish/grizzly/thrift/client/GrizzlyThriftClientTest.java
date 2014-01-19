@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012-2013 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2014 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -42,11 +42,14 @@ package org.glassfish.grizzly.thrift.client;
 
 import org.glassfish.grizzly.filterchain.FilterChainBuilder;
 import org.glassfish.grizzly.filterchain.TransportFilter;
+import org.glassfish.grizzly.http.server.HttpServer;
+import org.glassfish.grizzly.http.server.NetworkListener;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransportBuilder;
 import org.glassfish.grizzly.thrift.CalculatorHandler;
 import org.glassfish.grizzly.thrift.ThriftFrameFilter;
 import org.glassfish.grizzly.thrift.ThriftServerFilter;
+import org.glassfish.grizzly.thrift.http.ThriftHttpHandler;
 import org.junit.Assert;
 import org.junit.Test;
 import shared.SharedStruct;
@@ -94,14 +97,49 @@ public class GrizzlyThriftClientTest {
         // create client
         final ThriftClient<Calculator.Client> calculatorThriftClient = builder.build();
 
-        // execute
-        perform(calculatorThriftClient);
+        try {
+            // execute
+            perform(calculatorThriftClient);
+        } finally {
+            // release
+            manager.removeThriftClient("Calculator");
+            manager.shutdown();
 
-        // release
-        manager.removeThriftClient("Calculator");
-        manager.shutdown();
+            transport.shutdownNow();
+        }
+    }
 
-        transport.shutdownNow();
+    @Test
+    public void testOverHttp() throws Exception {
+        final String uriPath = "/httptest1";
+        @SuppressWarnings("unchecked")
+        final HttpServer httpServer = createThriftHttpServer(PORT, new Calculator.Processor(new CalculatorHandler()), uriPath);
+
+        // create manager
+        final GrizzlyThriftClientManager manager = new GrizzlyThriftClientManager.Builder().build();
+
+        // create builder
+        final GrizzlyThriftClient.Builder<Calculator.Client> builder = manager.createThriftClientBuilder("Calculator", new Calculator.Client.Factory());
+        final Set<SocketAddress> initServerSet = new HashSet<SocketAddress>();
+        initServerSet.add(new InetSocketAddress("localhost", PORT));
+        builder.servers(initServerSet);
+        builder.validationCheckMethodName("ping");
+        builder.connectTimeoutInMillis(1000L);
+        builder.httpUriPath(uriPath);
+
+        // create client
+        final ThriftClient<Calculator.Client> calculatorThriftClient = builder.build();
+
+        try {
+            // execute
+            perform(calculatorThriftClient);
+        } finally {
+            // release
+            manager.removeThriftClient("Calculator");
+            manager.shutdown();
+
+            httpServer.shutdownNow();
+        }
     }
 
     @Test
@@ -302,6 +340,15 @@ public class GrizzlyThriftClientTest {
         transport.bind(port);
         transport.start();
         return transport;
+    }
+
+    private static HttpServer createThriftHttpServer(final int port, final Calculator.Processor tprocessor, final String uriPath) throws IOException {
+        final HttpServer server = new HttpServer();
+        final NetworkListener listener = new NetworkListener("grizzly-thrift-http", NetworkListener.DEFAULT_NETWORK_HOST, port);
+        server.addListener(listener);
+        server.getServerConfiguration().addHttpHandler(new ThriftHttpHandler(tprocessor), uriPath);
+        server.start();
+        return server;
     }
 
     private static void perform(final ThriftClient<Calculator.Client> calculatorThriftClient) throws Exception {

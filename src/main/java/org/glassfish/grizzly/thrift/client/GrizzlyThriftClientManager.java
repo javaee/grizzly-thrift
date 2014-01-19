@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012-2013 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2014 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -81,8 +81,10 @@ public class GrizzlyThriftClientManager implements ThriftClientManager {
     private final AtomicBoolean shutdown = new AtomicBoolean(false);
 
     private ZKClient zkClient;
+    private final int maxThriftFrameLength;
 
     private GrizzlyThriftClientManager(final Builder builder) {
+        this.maxThriftFrameLength = builder.maxThriftFrameLength;
         TCPNIOTransport transportLocal = builder.transport;
         if (transportLocal == null) {
             isExternalTransport = false;
@@ -216,6 +218,10 @@ public class GrizzlyThriftClientManager implements ThriftClientManager {
 
     ZKClient getZkClient() {
         return zkClient;
+    }
+
+    int getMaxThriftFrameLength() {
+        return maxThriftFrameLength;
     }
 
     public static class Builder {

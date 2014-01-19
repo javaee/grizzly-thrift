@@ -94,7 +94,7 @@
         <url>http://grizzly.java.net</url>
     </organization>
     <properties>
-        <grizzly-framework-version>2.3.9</grizzly-framework-version>
+        <grizzly-framework-version>2.3.10</grizzly-framework-version>
         <zookeeper-version>3.3.4</zookeeper-version>
         <libthrift-version>0.9.1</libthrift-version>
     </properties>
@@ -313,6 +313,11 @@
         <dependency>
             <groupId>org.glassfish.grizzly</groupId>
             <artifactId>grizzly-framework</artifactId>
+            <version>${grizzly-framework-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.grizzly</groupId>
+            <artifactId>grizzly-http-server</artifactId>
             <version>${grizzly-framework-version}</version>
         </dependency>
         <dependency>

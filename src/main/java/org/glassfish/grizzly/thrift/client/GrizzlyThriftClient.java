@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012-2013 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2014 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -55,8 +55,13 @@ import org.glassfish.grizzly.Processor;
 import org.glassfish.grizzly.attributes.Attribute;
 import org.glassfish.grizzly.attributes.AttributeHolder;
 import org.glassfish.grizzly.filterchain.FilterChain;
+import org.glassfish.grizzly.filterchain.FilterChainBuilder;
+import org.glassfish.grizzly.filterchain.TransportFilter;
+import org.glassfish.grizzly.http.HttpClientFilter;
 import org.glassfish.grizzly.thrift.TGrizzlyClientTransport;
 import org.glassfish.grizzly.thrift.TTimedoutException;
+import org.glassfish.grizzly.thrift.ThriftClientFilter;
+import org.glassfish.grizzly.thrift.ThriftFrameFilter;
 import org.glassfish.grizzly.thrift.client.pool.BaseObjectPool;
 import org.glassfish.grizzly.thrift.client.pool.NoValidObjectException;
 import org.glassfish.grizzly.thrift.client.pool.ObjectPool;
@@ -68,6 +73,7 @@ import org.glassfish.grizzly.thrift.client.zookeeper.ZKClient;
 import org.glassfish.grizzly.thrift.client.zookeeper.ZooKeeperSupportThriftClient;
 import org.glassfish.grizzly.nio.transport.TCPNIOConnectorHandler;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
+import org.glassfish.grizzly.thrift.http.ThriftHttpClientFilter;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -173,6 +179,15 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
     private final ServerListBarrierListener zkListener;
     private String zooKeeperServerListPath;
 
+    private enum TransferProtocols {
+        BASIC, HTTP
+    }
+
+    private final TransferProtocols transferProtocol;
+    private final int maxThriftFrameLength;
+    private final String httpUriPath;
+    private final Processor processor;
+
     private GrizzlyThriftClient(Builder<T> builder) {
         this.thriftClientName = builder.thriftClientName;
         this.transport = builder.transport;
@@ -184,13 +199,28 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
         this.healthMonitorIntervalInSecs = builder.healthMonitorIntervalInSecs;
         this.validationCheckMethodName = builder.validationCheckMethodName;
 
+        this.maxThriftFrameLength = builder.maxThriftFrameLength;
+        this.transferProtocol = builder.transferProtocol;
+        this.httpUriPath = builder.httpUriPath;
+        final FilterChainBuilder clientFilterChainBuilder = FilterChainBuilder.stateless();
+        switch (transferProtocol) {
+            case HTTP:
+                clientFilterChainBuilder.add(new TransportFilter()).add(new HttpClientFilter()).add(new ThriftHttpClientFilter(httpUriPath)).add(new ThriftClientFilter());
+                break;
+            case BASIC:
+            default:
+                clientFilterChainBuilder.add(new TransportFilter()).add(new ThriftFrameFilter(maxThriftFrameLength)).add(new ThriftClientFilter());
+                break;
+        }
+        this.processor = clientFilterChainBuilder.build();
+
         @SuppressWarnings("unchecked")
         final BaseObjectPool.Builder<SocketAddress, T> connectionPoolBuilder =
                 new BaseObjectPool.Builder<SocketAddress, T>(new PoolableObjectFactory<SocketAddress, T>() {
                     @Override
                     public T createObject(final SocketAddress key) throws Exception {
                         final ConnectorHandler<SocketAddress> connectorHandler =
-                                TCPNIOConnectorHandler.builder(transport).setReuseAddress(true).build();
+                                TCPNIOConnectorHandler.builder(transport).processor(processor).setReuseAddress(true).build();
                         final Future<Connection> future = connectorHandler.connect(key);
                         final Connection<SocketAddress> connection;
                         try {
@@ -796,6 +826,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
         private boolean failover = true;
         private int retryCount = 1;
         private ThriftProtocols thriftProtocol = ThriftProtocols.BINARY;
+        private TransferProtocols transferProtocol = TransferProtocols.BASIC;
         private String validationCheckMethodName = null;
 
         // connection pool config
@@ -807,6 +838,8 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
         private boolean returnValidation = false;
 
         private final ZKClient zkClient;
+        private int maxThriftFrameLength;
+        private String httpUriPath = "/";
 
         public Builder(final String thriftClientName, final GrizzlyThriftClientManager manager, final TCPNIOTransport transport, final TServiceClientFactory<T> clientFactory) {
             this.thriftClientName = thriftClientName;
@@ -814,6 +847,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
             this.transport = transport;
             this.clientFactory = clientFactory;
             this.zkClient = manager.getZkClient();
+            this.maxThriftFrameLength = manager.getMaxThriftFrameLength();
         }
 
         /**
@@ -1012,6 +1046,26 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
             return this;
         }
 
+        /**
+         * Set the max length of thrift frame
+         *
+         * @param maxThriftFrameLength max frame length
+         * @return this builder
+         */
+        public Builder maxThriftFrameLength(final int maxThriftFrameLength) {
+            this.maxThriftFrameLength = maxThriftFrameLength;
+            return this;
+        }
+
+        public Builder<T> httpUriPath(final String httpUriPath) {
+            if (httpUriPath == null || httpUriPath.isEmpty()) {
+                return this;
+            }
+            this.transferProtocol = TransferProtocols.HTTP;
+            this.httpUriPath = httpUriPath;
+            return this;
+        }
+
         public Builder<T> validationCheckMethodName(final String validationCheckMethodName) {
             if (validationCheckMethodName != null) {
                 this.validationCheckMethodName = validationCheckMethodName;
@@ -1036,7 +1090,10 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
                 ", failover=" + failover +
                 ", retryCount=" + retryCount +
                 ", thriftProtocol=" + thriftProtocol +
+                ", transferProtocol=" + transferProtocol +
+                ", httpUriPath=" + httpUriPath +
                 ", clientFactory=" + clientFactory +
+                ", maxThriftFrameLength=" + maxThriftFrameLength +
                 '}';
     }
 }
