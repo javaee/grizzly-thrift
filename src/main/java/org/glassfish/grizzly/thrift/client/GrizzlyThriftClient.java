@@ -418,7 +418,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
                     logger.log(Level.SEVERE, "failed to create min connections in the pool. address=" + serverAddress, e);
                 }
                 try {
-                    connectionPool.removeAllObjects(serverAddress);
+                    connectionPool.destroy(serverAddress);
                 } catch (Exception ignore) {
                 }
                 if (!initial) {
@@ -447,7 +447,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
         }
         if (connectionPool != null) {
             try {
-                connectionPool.removeAllObjects(serverAddress);
+                connectionPool.destroy(serverAddress);
             } catch (Exception e) {
                 if (logger.isLoggable(Level.WARNING)) {
                     logger.log(Level.WARNING, "failed to remove connections in the pool", e);

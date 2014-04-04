@@ -147,6 +147,16 @@ public interface ObjectPool<K, V> {
     public void removeAllObjects(final K key) throws Exception;
 
     /**
+     * Destroy the specified pool, removing all pooled instances, mapping key and statistics corresponding to the given {@code key}
+     * <p/>
+     * After destroying, {@link #borrowObject} with the given {@code key} will be failed.
+     *
+     * @param key the key to destroy
+     * @throws Exception if an unexpected exception occurred
+     */
+    public void destroy(final K key) throws Exception;
+
+    /**
      * Destroy this pool, and free any resources associated with it
      * <p/>
      * Calling other methods such as {@link #createAllMinObjects createAllMinObjects} or {@link #borrowObject borrowObject},

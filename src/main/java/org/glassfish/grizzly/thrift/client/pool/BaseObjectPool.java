@@ -162,6 +162,27 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
      * {@inheritDoc}
      */
     @Override
+    public void destroy(final K key) throws Exception {
+        if (destroyed.get()) {
+            throw new IllegalStateException("pool has already destroyed");
+        }
+        if (key == null) {
+            throw new IllegalArgumentException("key must not be null");
+        }
+        final QueuePool<V> pool = keyedObjectPool.remove(key);
+        if (pool == null) {
+            return;
+        }
+        if (pool.destroyed.get()) {
+            return;
+        }
+        clearPool(pool, key);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public V borrowObject(final K key, final long timeoutInMillis) throws PoolExhaustedException, NoValidObjectException, InterruptedException {
         if (destroyed.get()) {
             throw new IllegalStateException("pool already has destroyed");
