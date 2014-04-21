@@ -40,6 +40,8 @@
 
 package org.glassfish.grizzly.thrift.client.pool;
 
+import java.util.concurrent.TimeoutException;
+
 /**
  * Keyed object pooling interface
  *
@@ -105,9 +107,11 @@ public interface ObjectPool<K, V> {
      * @return an instance from this pool
      * @throws PoolExhaustedException when the pool is exhausted
      * @throws NoValidObjectException when the pool cannot or will not return another instance
+     * @throws TimeoutException when the pool cannot or will not return another instance because of connection timeout
      * @throws InterruptedException   when the pool is interrupted
      */
-    public V borrowObject(final K key, final long timeoutInMillis) throws PoolExhaustedException, NoValidObjectException, InterruptedException;
+    public V borrowObject(final K key, final long timeoutInMillis) throws PoolExhaustedException, NoValidObjectException,
+            TimeoutException, InterruptedException;
 
     /**
      * Return an instance to the pool

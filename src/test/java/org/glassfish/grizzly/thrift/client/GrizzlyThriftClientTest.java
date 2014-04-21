@@ -77,6 +77,7 @@ public class GrizzlyThriftClientTest {
     private static final int PORT = 7791;
     private static final int FAILOVER_PORT = 7792;
     private static final int FAILED_SERVICE_PORT = 7793;
+    private static final int FAILED_SERVICE_PORT_2 = 7794;
 
     @Test
     public void testBasic() throws Exception {
@@ -169,9 +170,9 @@ public class GrizzlyThriftClientTest {
         final ThriftClient<Calculator.Client> calculatorThriftClient = builder.build();
 
         final InetSocketAddress validUri1 = new InetSocketAddress("localhost", PORT);
-        final InetSocketAddress invalidUri1 = new InetSocketAddress("1.2.3.4", PORT);
+        final InetSocketAddress invalidUri1 = new InetSocketAddress("127.0.0.1", FAILED_SERVICE_PORT);
         final InetSocketAddress validUri2 = new InetSocketAddress("127.0.0.1", FAILOVER_PORT);
-        final InetSocketAddress invalidUri2 = new InetSocketAddress("localhost", FAILED_SERVICE_PORT);
+        final InetSocketAddress invalidUri2 = new InetSocketAddress("localhost", FAILED_SERVICE_PORT_2);
         calculatorThriftClient.addServer(validUri1);
         calculatorThriftClient.addServer(invalidUri1);
         calculatorThriftClient.addServer(invalidUri2);

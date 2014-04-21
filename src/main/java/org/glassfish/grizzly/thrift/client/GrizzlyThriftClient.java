@@ -445,15 +445,6 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
         if (serverAddress == null) {
             return;
         }
-        if (connectionPool != null) {
-            try {
-                connectionPool.destroy(serverAddress);
-            } catch (Exception e) {
-                if (logger.isLoggable(Level.WARNING)) {
-                    logger.log(Level.WARNING, "failed to remove connections in the pool", e);
-                }
-            }
-        }
         if (!forcibly) {
             if (healthMonitorTask != null && healthMonitorTask.failure(serverAddress)) {
                 roundRobinStore.remove(serverAddress);
@@ -465,6 +456,18 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
             roundRobinStore.remove(serverAddress);
             if (logger.isLoggable(Level.INFO)) {
                 logger.log(Level.INFO, "removed the server successfully. address={0}", serverAddress);
+            }
+        }
+        if (connectionPool != null) {
+            try {
+                connectionPool.destroy(serverAddress);
+                if (logger.isLoggable(Level.INFO)) {
+                    logger.log(Level.INFO, "removed the server in the pool successfully. address={0}", serverAddress);
+                }
+            } catch (Exception e) {
+                if (logger.isLoggable(Level.WARNING)) {
+                    logger.log(Level.WARNING, "failed to remove connections in the pool", e);
+                }
             }
         }
     }
@@ -590,6 +593,11 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
                     logger.log(Level.FINER, "failed to get the client. address=" + address + ", timeout=" + connectTimeoutInMillis + "ms", nvoe);
                 }
                 removeServer(address, false);
+                continue;
+            } catch (TimeoutException te) {
+                if (logger.isLoggable(Level.FINER)) {
+                    logger.log(Level.FINER, "failed to get the client. address=" + address + ", timeout=" + connectTimeoutInMillis + "ms", te);
+                }
                 continue;
             } catch (InterruptedException ie) {
                 if (logger.isLoggable(Level.FINER)) {
