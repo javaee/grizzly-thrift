@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2014 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -130,14 +130,35 @@ public class RoundRobinStore<T> {
     public boolean hasValue(final T value) {
         if (value == null) {
             return false;
-        } else {
-            rLock.lock();
-            try {
-                return valueList.contains(value);
-            } finally {
-                rLock.unlock();
-            }
         }
+        rLock.lock();
+        try {
+            return valueList.contains(value);
+        } finally {
+            rLock.unlock();
+        }
+    }
+
+    public boolean hasOnly(final T value) {
+        if (value == null) {
+            return false;
+        }
+        rLock.lock();
+        try {
+            return valueList.size() == 1 && valueList.contains(value);
+        } finally {
+            rLock.unlock();
+        }
+    }
+
+    public int size() {
+        rLock.lock();
+        try {
+            return valueList.size();
+        } finally {
+            rLock.unlock();
+        }
+
     }
 
     public void clear() {

@@ -167,6 +167,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
     private final HealthMonitorTask healthMonitorTask;
     private final ScheduledExecutorService scheduledExecutor;
 
+    private final boolean retainLastServer;
     private final boolean failover;
     private final int retryCount;
 
@@ -198,6 +199,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
         this.responseTimeoutInMillis = builder.responseTimeoutInMillis;
         this.healthMonitorIntervalInSecs = builder.healthMonitorIntervalInSecs;
         this.validationCheckMethodName = builder.validationCheckMethodName;
+        this.retainLastServer = builder.retainLastServer;
 
         this.maxThriftFrameLength = builder.maxThriftFrameLength;
         this.transferProtocol = builder.transferProtocol;
@@ -446,7 +448,8 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
             return;
         }
         if (!forcibly) {
-            if (healthMonitorTask != null && healthMonitorTask.failure(serverAddress)) {
+            if (healthMonitorTask != null && healthMonitorTask.failure(serverAddress) &&
+                    !(retainLastServer && roundRobinStore.hasOnly(serverAddress))) {
                 roundRobinStore.remove(serverAddress);
                 if (logger.isLoggable(Level.INFO)) {
                     logger.log(Level.INFO, "removed the server successfully. address={0}", serverAddress);
@@ -608,43 +611,50 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
             if (client == null) {
                 continue;
             }
+            final boolean isMaxRetryCountReached = (i == retryCount);
+            final Level logLevel;
+            if (isMaxRetryCountReached) {
+                logLevel = Level.INFO;
+            } else {
+                logLevel = Level.FINER;
+            }
             boolean systemException = false;
             try {
                 return callback.call(client);
             } catch (TTimedoutException tte) {
                 systemException = true;
-                if (logger.isLoggable(Level.INFO)) {
-                    logger.log(Level.INFO, "timed out. address=" + address + ", client=" + client + ", callback" + callback, tte);
+                if (logger.isLoggable(logLevel)) {
+                    logger.log(logLevel, "timed out. address=" + address + ", client=" + client + ", callback" + callback, tte);
                 }
                 try {
                     connectionPool.removeObject(address, client);
                 } catch (Exception e) {
-                    if (logger.isLoggable(Level.INFO)) {
-                        logger.log(Level.INFO, "failed to remove the client. address=" + address + ", client=" + client, e);
+                    if (logger.isLoggable(logLevel)) {
+                        logger.log(logLevel, "failed to remove the client. address=" + address + ", client=" + client, e);
                     }
                 }
             } catch (TProtocolException tpe) {
                 systemException = true;
-                if (logger.isLoggable(Level.INFO)) {
-                    logger.log(Level.INFO, "occurred a thrift protocol error. address=" + address + ", client=" + client + ", callback" + callback, tpe);
+                if (logger.isLoggable(logLevel)) {
+                    logger.log(logLevel, "occurred a thrift protocol error. address=" + address + ", client=" + client + ", callback" + callback, tpe);
                 }
                 try {
                     connectionPool.removeObject(address, client);
                 } catch (Exception e) {
-                    if (logger.isLoggable(Level.INFO)) {
-                        logger.log(Level.INFO, "failed to remove the client. address=" + address + ", client=" + client, e);
+                    if (logger.isLoggable(logLevel)) {
+                        logger.log(logLevel, "failed to remove the client. address=" + address + ", client=" + client, e);
                     }
                 }
             } catch (TTransportException tte) {
                 systemException = true;
-                if (logger.isLoggable(Level.INFO)) {
-                    logger.log(Level.INFO, "occurred a thrift trasport error. address=" + address + ", client=" + client + ", callback" + callback, tte);
+                if (logger.isLoggable(logLevel)) {
+                    logger.log(logLevel, "occurred a thrift trasport error. address=" + address + ", client=" + client + ", callback" + callback, tte);
                 }
                 try {
                     connectionPool.removeObject(address, client);
                 } catch (Exception e) {
-                    if (logger.isLoggable(Level.INFO)) {
-                        logger.log(Level.INFO, "failed to remove the client. address=" + address + ", client=" + client, e);
+                    if (logger.isLoggable(logLevel)) {
+                        logger.log(logLevel, "failed to remove the client. address=" + address + ", client=" + client, e);
                     }
                 }
             } finally {
@@ -652,8 +662,8 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
                     try {
                         connectionPool.returnObject(address, client);
                     } catch (Exception e) {
-                        if (logger.isLoggable(Level.INFO)) {
-                            logger.log(Level.INFO, "failed to return the client. address=" + address + ", client=" + client, e);
+                        if (logger.isLoggable(logLevel)) {
+                            logger.log(logLevel, "failed to return the client. address=" + address + ", client=" + client, e);
                         }
                     }
                 }
@@ -844,6 +854,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
         private boolean allowDisposableConnection = false;
         private boolean borrowValidation = false;
         private boolean returnValidation = false;
+        private boolean retainLastServer = false;
 
         private final ZKClient zkClient;
         private int maxThriftFrameLength;
@@ -1013,6 +1024,19 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
         }
 
         /**
+         * Enable or disable the keeping a server in the the round-robin list when the only one server is remained in the list.
+         * <p/>
+         * Default is false
+         *
+         * @param retainLastServer true if this thrift client should make sure the retaining one server in the round-robin list.
+         * @return this builder
+         */
+        public Builder<T> retainLastServer(final boolean retainLastServer) {
+            this.retainLastServer = retainLastServer;
+            return this;
+        }
+
+        /**
          * Set initial servers
          *
          * @param servers server set
@@ -1085,23 +1109,28 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
 
     @Override
     public String toString() {
-        return "GrizzlyThriftClient{" +
-                "thriftClientName='" + thriftClientName + '\'' +
-                ", transport=" + transport +
-                ", connectTimeoutInMillis=" + connectTimeoutInMillis +
-                ", writeTimeoutInMillis=" + writeTimeoutInMillis +
-                ", responseTimeoutInMillis=" + responseTimeoutInMillis +
-                ", connectionPool=" + connectionPool +
-                ", initialServers=" + initialServers +
-                ", healthMonitorIntervalInSecs=" + healthMonitorIntervalInSecs +
-                ", healthMonitorTask=" + healthMonitorTask +
-                ", failover=" + failover +
-                ", retryCount=" + retryCount +
-                ", thriftProtocol=" + thriftProtocol +
-                ", transferProtocol=" + transferProtocol +
-                ", httpUriPath=" + httpUriPath +
-                ", clientFactory=" + clientFactory +
-                ", maxThriftFrameLength=" + maxThriftFrameLength +
-                '}';
+        final StringBuilder sb = new StringBuilder(256);
+        sb.append("GrizzlyThriftClient{");
+        sb.append("thriftClientName='").append(thriftClientName).append('\'');
+        sb.append(", transport=").append(transport);
+        sb.append(", connectTimeoutInMillis=").append(connectTimeoutInMillis);
+        sb.append(", writeTimeoutInMillis=").append(writeTimeoutInMillis);
+        sb.append(", responseTimeoutInMillis=").append(responseTimeoutInMillis);
+        sb.append(", validationCheckMethodName='").append(validationCheckMethodName).append('\'');
+        sb.append(", connectionPool=").append(connectionPool);
+        sb.append(", initialServers=").append(initialServers);
+        sb.append(", healthMonitorIntervalInSecs=").append(healthMonitorIntervalInSecs);
+        sb.append(", healthMonitorTask=").append(healthMonitorTask);
+        sb.append(", retainLastServer=").append(retainLastServer);
+        sb.append(", failover=").append(failover);
+        sb.append(", retryCount=").append(retryCount);
+        sb.append(", thriftProtocol=").append(thriftProtocol);
+        sb.append(", clientFactory=").append(clientFactory);
+        sb.append(", zooKeeperServerListPath='").append(zooKeeperServerListPath).append('\'');
+        sb.append(", transferProtocol=").append(transferProtocol);
+        sb.append(", maxThriftFrameLength=").append(maxThriftFrameLength);
+        sb.append(", httpUriPath='").append(httpUriPath).append('\'');
+        sb.append('}');
+        return sb.toString();
     }
 }
