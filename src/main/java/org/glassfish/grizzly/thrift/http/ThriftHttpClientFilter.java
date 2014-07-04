@@ -116,7 +116,7 @@ public class ThriftHttpClientFilter extends HttpBaseFilter {
         builder.protocol(Protocol.HTTP_1_1);
         builder.uri(uriPath);
         final InetSocketAddress peerAddress = (InetSocketAddress) ctx.getConnection().getPeerAddress();
-        final String httpHost = peerAddress.getHostString() + ':' + peerAddress.getPort();
+        final String httpHost = peerAddress.getHostName() + ':' + peerAddress.getPort();
         builder.host(httpHost);
         final long contentLength = requestBodyBuffer.remaining();
         if (contentLength >= 0) {
