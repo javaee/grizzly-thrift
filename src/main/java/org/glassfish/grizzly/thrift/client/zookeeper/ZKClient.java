@@ -711,8 +711,8 @@ public class ZKClient {
                     currentDataPath.equals(eventPath)) { // data changed
                 if (logger.isLoggable(Level.INFO)) {
                     logger.log(Level.INFO,
-                            "the central data has been changed in the remote zookeeper server. name={0}, regionName={1}",
-                            new Object[]{name, regionName});
+                            "the central data has been changed in the remote zookeeper server. name={0}, regionName={1}, eventType={2}",
+                            new Object[]{name, regionName, eventType});
                 }
                 final byte[] currentDataBytes;
                 final Stat currentDataStat = new Stat();
