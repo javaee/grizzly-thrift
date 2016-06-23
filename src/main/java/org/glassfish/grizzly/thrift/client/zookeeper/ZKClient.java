@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012-2013 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2016 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -63,6 +63,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
@@ -115,7 +116,7 @@ public class ZKClient {
     private static final Logger logger = Grizzly.logger(ZKClient.class);
 
     private static final String JVM_AND_HOST_UNIQUE_ID = ManagementFactory.getRuntimeMXBean().getName();
-    private static final int RETRY_COUNT_UNTIL_CONNECTED = 5;
+    private static final int RETRY_COUNT_UNTIL_CONNECTED = 3;
     /**
      * Path information:
      * /root/thrift/region_name/current/(client1, client2, ...)
@@ -161,7 +162,7 @@ public class ZKClient {
         this.sessionTimeoutInMillis = builder.sessionTimeoutInMillis;
         this.commitDelayTimeInSecs = builder.commitDelayTimeInSecs;
 
-        this.scheduledExecutor = Executors.newScheduledThreadPool(5);
+        this.scheduledExecutor = Executors.newScheduledThreadPool(7);
     }
 
     /**
@@ -680,6 +681,7 @@ public class ZKClient {
 
         private byte[] remoteDataBytes = null;
         private Stat remoteDataStat = null;
+        private ScheduledFuture rollbackFuture = null;
 
         private RegionWatcher(final String regionName) {
             this.regionName = regionName;
@@ -711,18 +713,28 @@ public class ZKClient {
                     currentDataPath.equals(eventPath)) { // data changed
                 if (logger.isLoggable(Level.INFO)) {
                     logger.log(Level.INFO,
-                            "the central data has been changed in the remote zookeeper server. name={0}, regionName={1}, eventType={2}",
-                            new Object[]{name, regionName, eventType});
+                               "the central data has been changed in the remote zookeeper server. name={0}, regionName={1}, eventType={2}, eventPath={3}",
+                               new Object[]{name, regionName, eventType, eventPath});
                 }
                 final byte[] currentDataBytes;
                 final Stat currentDataStat = new Stat();
+                // we should watch nodes' changes(watch1) while syncronizing nodes
+                final List<String> currentNodes = getChildren(currentNodesPath, this);
+                // get and store the remote changes at the preparing phase
+                currentDataBytes = getData(currentDataPath, false, currentDataStat);
+                if (currentDataBytes == null) {
+                    if (logger.isLoggable(Level.WARNING)) {
+                        logger.log(Level.WARNING,
+                                   "failed to get the remote changes. name={0}, regionName={1}, eventType={2}, eventPath={3}",
+                                   new Object[]{name, regionName, eventType, eventPath});
+                    }
+                }
+                final String myParticipantPath = currentParticipantPath + uniqueIdPath;
                 regionLock.lock();
                 try {
                     isSynchronizing = true;
                     aliveNodesExceptMyself.clear();
                     toBeCompleted.clear();
-                    // we should watch nodes' changes(watch1) while syncronizing nodes
-                    final List<String> currentNodes = getChildren(currentNodesPath, this);
                     aliveNodesExceptMyself.addAll(currentNodes);
                     // remove own node
                     aliveNodesExceptMyself.remove(uniqueId);
@@ -735,18 +747,47 @@ public class ZKClient {
                             toBeCompleted.remove(participant);
                         }
                     }
-                    // get and store the remote changes at the preparing phase
-                    currentDataBytes = getData(currentDataPath, false, currentDataStat);
                     remoteDataBytes = currentDataBytes;
                     remoteDataStat = currentDataStat;
+                    if (currentDataBytes != null && exists(myParticipantPath, false) == null &&
+                        create(myParticipantPath, NO_DATA, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL) == null) {
+                        if (logger.isLoggable(Level.WARNING)) {
+                            logger.log(Level.WARNING, "failed to create myParticipantPath. path={0}", myParticipantPath);
+                        }
+                    }
+                    // prepared to roll back
+                    final Long scheduled =
+                            currentDataStat.getMtime() + TimeUnit.SECONDS.toMillis(commitDelayTimeInSecs * 2);
+                    final long remaining = scheduled - System.currentTimeMillis();
+                    rollbackFuture = scheduledExecutor.schedule(new Runnable() {
+                        @Override
+                        public void run() {
+                            regionLock.lock();
+                            try {
+                                if (logger.isLoggable(Level.WARNING)) {
+                                    final Long expected = currentDataStat.getMtime() +
+                                                          TimeUnit.SECONDS.toMillis(commitDelayTimeInSecs);
+                                    final Date expectedDate = new Date(expected);
+                                    logger.log(Level.WARNING,
+                                               "commit's schedule has been timed out so synchronization will be rolled back. name={0}, regionName={1}, expectedDate={2}, toBeComplete={3}",
+                                               new Object[]{name, regionName, expectedDate, toBeCompleted});
+                                }
+                                clearSynchronization();
+                                // delete own barrier path
+                                if (!delete(myParticipantPath, -1)) {
+                                    if (logger.isLoggable(Level.FINE)) {
+                                        logger.log(Level.FINE,
+                                                   "there is no the participant path to be deleted in rolling back because it may already has been closed. name={0}, regionName={1}, path={2}",
+                                                   new Object[]{name, regionName, myParticipantPath});
+                                    }
+                                }
+                            } finally {
+                                regionLock.unlock();
+                            }
+                        }
+                    }, remaining, TimeUnit.MILLISECONDS);
                 } finally {
                     regionLock.unlock();
-                }
-                if (currentDataBytes == null ||
-                        create(currentParticipantPath + uniqueIdPath, NO_DATA, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL) == null) {
-                    if (logger.isLoggable(Level.WARNING)) {
-                        logger.log(Level.WARNING, "failed to get the remote changes");
-                    }
                 }
                 // register the watcher for detecting next data's changes again
                 exists(currentDataPath, this);
@@ -756,18 +797,14 @@ public class ZKClient {
                 regionLock.lock();
                 try {
                     if (isSynchronizing) {
-                        isSynchronizing = false;
-                        if (!aliveNodesExceptMyself.isEmpty() || !toBeCompleted.isEmpty()) {
+                        if (!toBeCompleted.isEmpty()) {
                             if (logger.isLoggable(Level.WARNING)) {
                                 logger.log(Level.WARNING,
-                                        "the central data deleted in the remote zookeeper server while preparing to synchronize the data. name={0}, regionName={1}",
-                                        new Object[]{name, regionName});
+                                           "the central data deleted in the remote zookeeper server while preparing to synchronize the data. name={0}, regionName={1}, eventPath={2}, toBeCompleted={3}",
+                                           new Object[]{name, regionName, eventPath, toBeCompleted});
                             }
-                            aliveNodesExceptMyself.clear();
-                            toBeCompleted.clear();
                         }
-                        remoteDataBytes = null;
-                        remoteDataStat = null;
+                        clearSynchronization();
                     }
                 } finally {
                     regionLock.unlock();
@@ -782,40 +819,46 @@ public class ZKClient {
                     if (isSynchronizing) {
                         toBeCompleted.remove(eventPath);
                         if (toBeCompleted.isEmpty()) {
-                            isSynchronizing = false;
-                            scheduleCommit(event, currentDataPath, currentParticipantPath, remoteDataBytes, remoteDataStat);
-                            remoteDataBytes = null;
-                            remoteDataStat = null;
+                            scheduleCommit(event, currentDataPath, currentParticipantPath, remoteDataBytes,
+                                           remoteDataStat);
+                            clearSynchronization();
                         }
                     }
                 } finally {
                     regionLock.unlock();
                 }
             } else if (isSynchronizing &&
-                    eventType == Event.EventType.NodeChildrenChanged && currentNodesPath.equals(eventPath)) { // nodes changed from (watch1)
-                if (logger.isLoggable(Level.WARNING)) {
-                    logger.log(Level.WARNING,
-                            "some clients are failed or added while preparing to syncronize the data. name={0}, regionName={1}",
-                            new Object[]{name, regionName});
+                       eventType == Event.EventType.NodeChildrenChanged &&
+                       currentNodesPath.equals(eventPath)) { // nodes changed from (watch1)
+                if (logger.isLoggable(Level.INFO)) {
+                    logger.log(Level.INFO,
+                               "some clients are failed or added while preparing to synchronize the data. name={0}, regionName={1}, eventPath={2}",
+                               new Object[]{name, regionName, eventPath});
                 }
+                // we should watch nodes' changes again(watch1)
+                final List<String> currentNodes = getChildren(currentNodesPath, this);
                 regionLock.lock();
                 try {
                     if (isSynchronizing) {
-                        // we should watch nodes' changes again(watch1)
-                        final List<String> currentNodes = getChildren(currentNodesPath, this);
                         // remove own node
-                        currentNodes.remove(uniqueIdPath);
+                        currentNodes.remove(uniqueId);
                         final List<String> failureNodes = new ArrayList<String>(aliveNodesExceptMyself);
                         failureNodes.removeAll(currentNodes);
-                        for (final String node : failureNodes) {
-                            final String participant = currentParticipantPath + "/" + node;
-                            toBeCompleted.remove(participant);
-                        }
-                        if (toBeCompleted.isEmpty()) {
-                            isSynchronizing = false;
-                            scheduleCommit(event, currentDataPath, currentParticipantPath, remoteDataBytes, remoteDataStat);
-                            remoteDataBytes = null;
-                            remoteDataStat = null;
+                        if (!failureNodes.isEmpty()) {
+                            if (logger.isLoggable(Level.WARNING)) {
+                                logger.log(Level.WARNING,
+                                           "some clients are failed while preparing to synchronize the data. name={0}, regionName={1}, eventPath={2}, failureNodes={3}",
+                                           new Object[]{name, regionName, eventPath, failureNodes});
+                            }
+                            for (final String node : failureNodes) {
+                                final String participant = currentParticipantPath + "/" + node;
+                                toBeCompleted.remove(participant);
+                            }
+                            if (toBeCompleted.isEmpty()) {
+                                scheduleCommit(event, currentDataPath, currentParticipantPath, remoteDataBytes,
+                                               remoteDataStat);
+                                clearSynchronization();
+                            }
                         }
                     }
                 } finally {
@@ -834,8 +877,8 @@ public class ZKClient {
                                     final String currentDataPath,
                                     final String currentParticipantPath,
                                     final byte[] currentDataBytes,
-                                    final Stat currnetDataStat) {
-            if (event == null || currentDataPath == null || currentDataBytes == null || currnetDataStat == null) {
+                                    final Stat currentDataStat) {
+            if (event == null || currentDataPath == null || currentDataBytes == null || currentDataStat == null) {
                 return;
             }
             if (logger.isLoggable(Level.INFO)) {
@@ -844,7 +887,7 @@ public class ZKClient {
                         new Object[]{name, regionName, commitDelayTimeInSecs});
             }
             // all nodes are prepared
-            final Long scheduled = currnetDataStat.getMtime() + TimeUnit.SECONDS.toMillis(commitDelayTimeInSecs);
+            final Long scheduled = currentDataStat.getMtime() + TimeUnit.SECONDS.toMillis(commitDelayTimeInSecs);
             final long remaining = scheduled - System.currentTimeMillis();
             if (remaining < 0) {
                 if (logger.isLoggable(Level.WARNING)) {
@@ -856,8 +899,9 @@ public class ZKClient {
                 final Date scheduledDate = new Date(scheduled);
                 if (logger.isLoggable(Level.INFO)) {
                     logger.log(Level.INFO,
-                            "the changes of the central data will be applied. name={0}, regionName={1}, scheduledDate={2}, data={3}, dataStat={4}",
-                            new Object[]{name, regionName, scheduledDate.toString(), currentDataBytes, currnetDataStat});
+                               "the changes of the central data will be applied. name={0}, regionName={1}, scheduledDate={2}, data={3}, dataStat={4}",
+                               new Object[]{name, regionName, scheduledDate.toString(), currentDataBytes,
+                                            currentDataStat});
                 }
             }
             scheduledExecutor.schedule(new Runnable() {
@@ -902,6 +946,21 @@ public class ZKClient {
                     }
                 }
             }, remaining, TimeUnit.MILLISECONDS);
+        }
+
+        private void clearSynchronization() {
+            if (!isSynchronizing) {
+                return;
+            }
+            isSynchronizing = false;
+            aliveNodesExceptMyself.clear();
+            toBeCompleted.clear();
+            remoteDataBytes = null;
+            remoteDataStat = null;
+            if (rollbackFuture != null) {
+                rollbackFuture.cancel(false);
+                rollbackFuture = null;
+            }
         }
 
         @Override
