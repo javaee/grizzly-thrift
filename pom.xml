@@ -55,17 +55,13 @@
     <name>grizzly-thrift</name>
     <url>http://grizzly.java.net</url>
     <issueManagement>
-        <system>JIRA</system>
-        <url>http://java.net/jira/browse/GRIZZLY</url>
+        <system>GitHub</system>
+        <url>https://github.com/javaee/grizzly-thrift/issues</url>
     </issueManagement>
     <mailingLists>
         <mailingList>
-            <name>Grizzly Dev List</name>
-            <archive>dev@grizzly.java.net</archive>
-        </mailingList>
-        <mailingList>
-            <name>Grizzly Support List</name>
-            <archive>users@grizzly.java.net</archive>
+            <name>Grizzly Discussion Group</name>
+            <archive>https://javaee.groups.io/g/grizzly</archive>
         </mailingList>
     </mailingLists>
     <developers>
@@ -73,7 +69,9 @@
             <id>carryel</id>
             <name>Bongjae Chang</name>
             <email>bongjae.chang@gmail.com</email>
-            <url>http://www.java.net/author/bongjae-chang</url>
+            <url>https://community.oracle.com/blogs/carryel</url>
+            <organization>Kakao Corp.</organization>
+            <organizationUrl>http://www.kakaocorp.com/en/main</organizationUrl>
         </developer>
     </developers>
     <licenses>
@@ -83,18 +81,18 @@
         </license>
     </licenses>
     <scm>
-        <connection>scm:git:git://java.net/grizzly~thrift</connection>
+        <connection>scm:git:https://github.com/javaee/grizzly-thrift.git</connection>
         <developerConnection>
-            scm:git:ssh://${user.name}@git.java.net/grizzly~thrift
+            scm:git:git@github.com:javaee/grizzly-thrift.git
         </developerConnection>
-        <url>http://java.net/projects/grizzly/sources/thrift/show</url>
+        <url>https://github.com/javaee/grizzly-thrift</url>
     </scm>
     <organization>
-        <name>Project Grizzly</name>
-        <url>http://grizzly.java.net</url>
+        <name>Oracle Corporation</name>
+        <url>http://www.oracle.com</url>
     </organization>
     <properties>
-        <grizzly-framework-version>2.3.30</grizzly-framework-version>
+        <grizzly-framework-version>2.3.32</grizzly-framework-version>
         <zookeeper-version>3.4.8</zookeeper-version>
         <libthrift-version>0.9.1</libthrift-version>
     </properties>
