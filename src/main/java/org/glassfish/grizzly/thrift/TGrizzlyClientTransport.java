@@ -79,27 +79,27 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
 
     public static TGrizzlyClientTransport create(final Connection connection, final long readTimeoutMillis, final long writeTimeoutMillis) {
         if (connection == null) {
-            throw new IllegalStateException("Connection should not be null");
+            throw new IllegalStateException("connection should not be null.");
         }
         final Processor processor = connection.getProcessor();
         if (!(processor instanceof FilterChain)) {
-            throw new IllegalStateException("Connection's processor has to be a FilterChain");
+            throw new IllegalStateException("connection's processor has to be a FilterChain.");
         }
         final FilterChain connectionFilterChain = (FilterChain) connection.getProcessor();
         final int idx = connectionFilterChain.indexOfType(ThriftClientFilter.class);
         if (idx == -1) {
-            throw new IllegalStateException("Connection has to have ThriftClientFilter in the FilterChain");
+            throw new IllegalStateException("connection has to have ThriftClientFilter in the FilterChain.");
         }
         final ThriftClientFilter thriftClientFilter =
                 (ThriftClientFilter) connectionFilterChain.get(idx);
         if (thriftClientFilter == null) {
-            throw new IllegalStateException("thriftClientFilter should not be null");
+            throw new IllegalStateException("thriftClientFilter should not be null.");
         }
 
         @SuppressWarnings("unchecked")
         final BlockingQueue<Buffer> inputBuffersQueue = thriftClientFilter.getInputBuffersQueue(connection);
         if (inputBuffersQueue == null) {
-            throw new IllegalStateException("inputBuffersQueue should not be null");
+            throw new IllegalStateException("inputBuffersQueue should not be null.");
         }
         return new TGrizzlyClientTransport(connection, inputBuffersQueue, readTimeoutMillis, writeTimeoutMillis);
     }
@@ -191,9 +191,9 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
             localInput = getLocalInput(readTimeoutMillis);
         }
         if (localInput == null) {
-            throw new TTimedoutException( "timed out while reading the input buffer");
+            throw new TTimedoutException("timed out while reading the input buffer.");
         } else if (localInput == ThriftClientFilter.POISON) {
-            throw new TTransportException("Client connection is closed##");
+            throw new TTransportException("client connection was already closed.");
         }
         this.input = localInput;
         return localInput;
@@ -221,7 +221,7 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
 
     private void checkConnectionOpen() throws TTransportException {
         if (!isOpen()) {
-            throw new TTransportException("Client connection is closed");
+            throw new TTransportException("client connection is closed.");
         }
     }
 }
