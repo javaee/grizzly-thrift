@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2011 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -81,34 +81,26 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
         if (connection == null) {
             throw new IllegalStateException("Connection should not be null");
         }
-        
         final Processor processor = connection.getProcessor();
-        
         if (!(processor instanceof FilterChain)) {
             throw new IllegalStateException("Connection's processor has to be a FilterChain");
         }
-
         final FilterChain connectionFilterChain = (FilterChain) connection.getProcessor();
         final int idx = connectionFilterChain.indexOfType(ThriftClientFilter.class);
-        
         if (idx == -1) {
             throw new IllegalStateException("Connection has to have ThriftClientFilter in the FilterChain");
         }
-        
         final ThriftClientFilter thriftClientFilter =
                 (ThriftClientFilter) connectionFilterChain.get(idx);
-
         if (thriftClientFilter == null) {
             throw new IllegalStateException("thriftClientFilter should not be null");
         }
 
         @SuppressWarnings("unchecked")
         final BlockingQueue<Buffer> inputBuffersQueue = thriftClientFilter.getInputBuffersQueue(connection);
-
         if (inputBuffersQueue == null) {
             throw new IllegalStateException("inputBuffersQueue should not be null");
         }
-
         return new TGrizzlyClientTransport(connection, inputBuffersQueue, readTimeoutMillis, writeTimeoutMillis);
     }
 
@@ -124,7 +116,6 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
                                     final long readTimeoutMillis,
                                     final long writeTimeoutMillis) {
         this.connection = connection;
-
         this.inputBuffersQueue = inputBuffersQueue;
         this.outputStream = new BufferOutputStream(
                 connection.getTransport().getMemoryManager()) {
@@ -154,6 +145,7 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
             outputStream.close();
         } catch (IOException ignore) {
         }
+        inputBuffersQueue.clear();
         try {
             final GrizzlyFuture closeFuture = connection.close();
             closeFuture.get(3, TimeUnit.SECONDS);
@@ -165,11 +157,9 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
     @SuppressWarnings("unchecked")
     public void flush() throws TTransportException {
         checkConnectionOpen();
-
         final Buffer output = outputStream.getBuffer();
         output.trim();
         outputStream.reset();
-
         try {
             final GrizzlyFuture future = connection.write(output);
             if (writeTimeoutMillis > 0) {
@@ -192,6 +182,7 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
 
     @Override
     protected Buffer getInputBuffer() throws TTransportException {
+        checkConnectionOpen();
         Buffer localInput = this.input;
         if (localInput == null) {
             localInput = getLocalInput(readTimeoutMillis);
@@ -201,6 +192,8 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
         }
         if (localInput == null) {
             throw new TTimedoutException( "timed out while reading the input buffer");
+        } else if (localInput == ThriftClientFilter.POISON) {
+            throw new TTransportException("Client connection is closed##");
         }
         this.input = localInput;
         return localInput;

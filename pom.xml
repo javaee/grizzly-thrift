@@ -92,7 +92,7 @@
         <url>http://www.oracle.com</url>
     </organization>
     <properties>
-        <grizzly-framework-version>2.3.32</grizzly-framework-version>
+        <grizzly-framework-version>2.3.33</grizzly-framework-version>
         <zookeeper-version>3.4.8</zookeeper-version>
         <libthrift-version>0.9.1</libthrift-version>
     </properties>

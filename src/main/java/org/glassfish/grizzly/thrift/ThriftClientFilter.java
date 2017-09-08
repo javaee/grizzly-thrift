@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2011-2014 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -48,6 +48,7 @@ import org.glassfish.grizzly.attributes.Attribute;
 import org.glassfish.grizzly.filterchain.BaseFilter;
 import org.glassfish.grizzly.filterchain.FilterChainContext;
 import org.glassfish.grizzly.filterchain.NextAction;
+import org.glassfish.grizzly.memory.Buffers;
 import org.glassfish.grizzly.thrift.client.GrizzlyThriftClient;
 import org.glassfish.grizzly.thrift.client.pool.ObjectPool;
 import org.glassfish.grizzly.utils.DataStructures;
@@ -109,6 +110,8 @@ public class ThriftClientFilter<T extends TServiceClient> extends BaseFilter {
                         }
                     });
 
+    static final Buffer POISON = Buffers.EMPTY_BUFFER;
+
     @Override
     public NextAction handleRead(FilterChainContext ctx) throws IOException {
         final Buffer input = ctx.getMessage();
@@ -149,6 +152,7 @@ public class ThriftClientFilter<T extends TServiceClient> extends BaseFilter {
             final BlockingQueue<Buffer> inputBuffersQueue = inputBuffersQueueAttribute.get(connection);
             if (inputBuffersQueue != null) {
                 inputBuffersQueue.clear();
+                inputBuffersQueue.offer(POISON);
                 inputBuffersQueueAttribute.remove(connection);
             }
         }
