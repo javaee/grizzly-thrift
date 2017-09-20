@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2011 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -54,7 +54,7 @@ import java.io.IOException;
 
 /**
  * ThriftFrameFilter supports TFramedTranport that ensures a fully read message by preceding messages with a 4-byte frame size.
- * <p/>
+ * <p>
  * If the frame size exceeds the max size which you can set by constructor's parameter, exception will be thrown.
  *
  * @author Bongjae Chang

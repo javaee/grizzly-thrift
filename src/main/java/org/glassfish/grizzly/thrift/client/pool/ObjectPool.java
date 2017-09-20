@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -81,7 +81,7 @@ public interface ObjectPool<K, V> {
 
     /**
      * Create objects using the {@link org.glassfish.grizzly.thrift.client.pool.PoolableObjectFactory factory} until pool's minimum size, and then place them in the idle object pool
-     * <p/>
+     * <p>
      * {@code createAllMinObjects} is useful for "pre-loading" a pool with idle objects.
      *
      * @param key the key new instances should be added to
@@ -91,14 +91,14 @@ public interface ObjectPool<K, V> {
 
     /**
      * Obtains an instance from this pool
-     * <p/>
+     * <p>
      * Instances returned from this method will have been either newly created with
      * {@link org.glassfish.grizzly.thrift.client.pool.PoolableObjectFactory#createObject createObject} or will be a previously idle object and
      * then validated with {@link org.glassfish.grizzly.thrift.client.pool.PoolableObjectFactory#validateObject validateObject}.
-     * <p/>
+     * <p>
      * By contract, clients should return the borrowed instance using
      * {@link #returnObject returnObject}, {@link #removeObject removeObject}
-     * <p/>
+     * <p>
      * When the pool has been exhausted, a {@link PoolExhaustedException} will be thrown.
      *
      * @param key             the key used to obtain the object
@@ -115,7 +115,7 @@ public interface ObjectPool<K, V> {
 
     /**
      * Return an instance to the pool
-     * <p/>
+     * <p>
      * By contract, {@code value} should have been obtained
      * using {@link #borrowObject borrowObject} using a {@code key} that is equivalent to the one used to
      * borrow the instance in the first place.
@@ -128,11 +128,11 @@ public interface ObjectPool<K, V> {
 
     /**
      * Removes(invalidates) an object from the pool
-     * <p/>
+     * <p>
      * By contract, {@code value} should have been obtained
      * using {@link #borrowObject borrowObject} using a {@code key} that is equivalent to the one used to
      * borrow the instance in the first place.
-     * <p/>
+     * <p>
      * This method should be used when an object that has been borrowed
      * is determined (due to an exception or other problem) to be invalid.
      *
@@ -152,7 +152,7 @@ public interface ObjectPool<K, V> {
 
     /**
      * Destroy the specified pool, removing all pooled instances, mapping key and statistics corresponding to the given {@code key}
-     * <p/>
+     * <p>
      * After destroying, {@link #borrowObject} with the given {@code key} will be failed.
      *
      * @param key the key to destroy
@@ -162,11 +162,10 @@ public interface ObjectPool<K, V> {
 
     /**
      * Destroy this pool, and free any resources associated with it
-     * <p/>
+     * <p>
      * Calling other methods such as {@link #createAllMinObjects createAllMinObjects} or {@link #borrowObject borrowObject},
      * {@link #returnObject returnObject} or {@link #removeObject removeObject} or {@link #removeAllObjects removeAllObjects} after invoking
      * this method on a pool will cause them to throw an {@link IllegalStateException}.
-     * </p>
      */
     public void destroy();
 

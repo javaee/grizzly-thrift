@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012-2013 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -40,14 +40,13 @@
 
 package org.glassfish.grizzly.thrift.client;
 
-import org.apache.thrift.TException;
 import org.apache.thrift.TServiceClient;
 
 import java.net.SocketAddress;
 
 /**
  * The thrift client's interface
- * <p/>
+ * <p>
  * By {@link #addServer} and {@link #removeServer}, servers can be added and removed dynamically in this thrift client.
  * In other words, the managed server list can be changed in runtime by APIs.
  * By {@link #execute}, user can execute custom service(For more information, please see {@link ThriftClientCallback}'s javadoc).

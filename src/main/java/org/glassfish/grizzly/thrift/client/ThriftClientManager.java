@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -51,7 +51,7 @@ import org.apache.thrift.TServiceClientFactory;
 public interface ThriftClientManager {
     /**
      * Creates a new {@link ThriftClientBuilder} for the named thrift client to be managed by this thrift client manager.
-     * <p/>
+     * <p>
      * The returned ThriftClientBuilder is associated with this ThriftClientManager.
      * The ThriftClient will be created, added to this ThriftClientManager and started when
      * {@link ThriftClientBuilder#build()} is called.

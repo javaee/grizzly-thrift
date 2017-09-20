@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -44,7 +44,7 @@ import java.io.Serializable;
 
 /**
  * The configuration for ZooKeeper client
- * <p/>
+ * <p>
  * Example of use:
  * {@code
  * final GrizzlyThriftClientManager.Builder managerBuilder = new GrizzlyThriftClientManager.Builder();
@@ -91,11 +91,12 @@ public class ZooKeeperConfig implements Serializable {
     private long commitDelayTimeInSecs = DEFAULT_COMMIT_DELAY_TIME_IN_SECS;
 
     /**
-     * The specific name or Id for ZKClient
+     * Create ZKClient's configuration with the specific name or Id
      *
      * @param name                name or id
      * @param zooKeeperServerList comma separated host:port pairs, each corresponding to a zookeeper server.
      *                            e.g. "127.0.0.1:3000,127.0.0.1:3001,127.0.0.1:3002"
+     * @return ZKClient's configuration
      */
     public static ZooKeeperConfig create(final String name, final String zooKeeperServerList) {
         return new ZooKeeperConfig(name, zooKeeperServerList);

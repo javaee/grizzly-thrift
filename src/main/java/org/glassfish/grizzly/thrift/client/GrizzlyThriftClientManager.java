@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012-2014 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -63,7 +63,7 @@ import java.util.logging.Logger;
 
 /**
  * The implementation of the {@link ThriftClientManager} based on Grizzly
- * <p/>
+ * <p>
  * This thrift client manager has a key(String thrift client name)/value({@link GrizzlyThriftClient} map for retrieving thrift clients.
  * If the specific {@link org.glassfish.grizzly.nio.transport.TCPNIOTransport GrizzlyTransport} is not set at creation time, this will create a main GrizzlyTransport.
  * The {@link org.glassfish.grizzly.nio.transport.TCPNIOTransport GrizzlyTransport} must contain {@link org.glassfish.grizzly.thrift.ThriftFrameFilter} and {@link org.glassfish.grizzly.thrift.ThriftClientFilter}.
@@ -240,7 +240,7 @@ public class GrizzlyThriftClientManager implements ThriftClientManager {
 
         /**
          * Set the specific {@link org.glassfish.grizzly.nio.transport.TCPNIOTransport GrizzlyTransport}
-         * <p/>
+         * <p>
          * If this is not set or set to be null, {@link org.glassfish.grizzly.thrift.client.GrizzlyThriftClientManager} will create a default transport.
          * The given {@code transport} must be always started state if it is not null.
          * Default is null.
@@ -255,7 +255,7 @@ public class GrizzlyThriftClientManager implements ThriftClientManager {
 
         /**
          * Set selector threads' count
-         * <p/>
+         * <p>
          * If this thrift client manager will create a default transport, the given selector counts will be passed to {@link org.glassfish.grizzly.nio.transport.TCPNIOTransport}.
          * Default is processors' count * 2.
          *
@@ -269,7 +269,7 @@ public class GrizzlyThriftClientManager implements ThriftClientManager {
 
         /**
          * Set the specific IO Strategy of Grizzly
-         * <p/>
+         * <p>
          * If this thrift client manager will create a default transport, the given {@link org.glassfish.grizzly.IOStrategy} will be passed to {@link org.glassfish.grizzly.nio.transport.TCPNIOTransport}.
          * Default is {@link org.glassfish.grizzly.strategies.SameThreadIOStrategy}.
          *
@@ -283,7 +283,7 @@ public class GrizzlyThriftClientManager implements ThriftClientManager {
 
         /**
          * Enable or disable the blocking mode
-         * <p/>
+         * <p>
          * If this thrift client manager will create a default transport, the given mode will be passed to {@link org.glassfish.grizzly.nio.transport.TCPNIOTransport}.
          * Default is false.
          *
@@ -297,7 +297,7 @@ public class GrizzlyThriftClientManager implements ThriftClientManager {
 
         /**
          * Set the specific worker thread pool
-         * <p/>
+         * <p>
          * If this thrift client manager will create a default transport, the given {@link java.util.concurrent.ExecutorService} will be passed to {@link org.glassfish.grizzly.nio.transport.TCPNIOTransport}.
          * This is only effective if {@link org.glassfish.grizzly.IOStrategy} is not {@link org.glassfish.grizzly.strategies.SameThreadIOStrategy}.
          * Default is null.

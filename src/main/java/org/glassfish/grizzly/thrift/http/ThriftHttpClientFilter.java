@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2014 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -55,19 +55,19 @@ import java.net.InetSocketAddress;
 
 /**
  * ThriftHttpClientFilter is a client-side filter for Thrift RPC processors over HTTP.
- * <p/>
+ * <p>
  * Usages:
  * <pre>
  * {@code
  * final FilterChainBuilder clientFilterChainBuilder = FilterChainBuilder.stateless();
  * clientFilterChainBuilder.add(new TransportFilter()).add(new HttpClientFilter()).add(new ThriftHttpClientFilter("/yourUriPath")).add(new ThriftClientFilter());
- * <p/>
+ * <p>
  * final TCPNIOTransport transport = TCPNIOTransportBuilder.newInstance().build();
  * transport.setProcessor(clientFilterChainBuilder.build());
  * transport.start();
  * Future<Connection> future = transport.connect(ip, port);
  * final Connection connection = future.get(10, TimeUnit.SECONDS);
- * <p/>
+ * <p>
  * final TTransport ttransport = TGrizzlyClientTransport.create(connection);
  * final TProtocol tprotocol = new TBinaryProtocol(ttransport);
  * user-generated.thrift.Client client = new user-generated.thrift.Client(tprotocol);

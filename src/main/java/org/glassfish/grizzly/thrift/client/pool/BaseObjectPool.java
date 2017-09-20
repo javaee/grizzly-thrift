@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012-2014 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -639,7 +639,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
 
         /**
          * Set minimum size of this pool
-         * <p/>
+         * <p>
          * Default is 5.
          *
          * @param min min size
@@ -654,7 +654,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
 
         /**
          * Set maximum size of this pool
-         * <p/>
+         * <p>
          * Default is unbounded as {@link Integer#MAX_VALUE}.
          *
          * @param max max size
@@ -669,7 +669,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
 
         /**
          * Set whether this pool should validate the object by {@link PoolableObjectFactory#validateObject} before returning a borrowed object to the user
-         * <p/>
+         * <p>
          * Default is false.
          *
          * @param borrowValidation true if validation will be needed
@@ -682,7 +682,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
 
         /**
          * Set whether this pool should validate the object by {@link PoolableObjectFactory#validateObject} before returning a borrowed object to the pool
-         * <p/>
+         * <p>
          * Default is false.
          *
          * @param returnValidation true if validation will be needed
@@ -695,7 +695,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
 
         /**
          * Set disposable property
-         * <p/>
+         * <p>
          * If this pool is bounded and doesn't have idle objects any more, temporary object will be returned to the user if {@code disposable} is true.
          * The disposable object will be returned to the pool, it will be destroyed silently.
          * Default is false.
@@ -710,7 +710,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
 
         /**
          * Set the KeepAliveTimeout of this pool
-         * <p/>
+         * <p>
          * This pool will schedule EvictionTask with this interval.
          * EvictionTask will evict idle objects if this pool has more than min objects.
          * If the given parameter is negative, this pool never schedules EvictionTask.

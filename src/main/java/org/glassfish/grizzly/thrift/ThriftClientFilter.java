@@ -62,21 +62,21 @@ import java.util.logging.Logger;
 
 /**
  * ThriftClientFilter is a client-side filter for Thrift RPC processors.
- * <p/>
+ * <p>
  * Read-messages will be queued in LinkedBlockingQueue from which TGrizzlyClientTransport will read it.
- * <p/>
+ * <p>
  * Usages:
  * <pre>
  * {@code
  * final FilterChainBuilder clientFilterChainBuilder = FilterChainBuilder.stateless();
  * clientFilterChainBuilder.add(new TransportFilter()).add(new ThriftFrameFilter()).add(new ThriftClientFilter());
- * <p/>
+ * <p>
  * final TCPNIOTransport transport = TCPNIOTransportBuilder.newInstance().build();
  * transport.setProcessor(clientFilterChainBuilder.build());
  * transport.start();
  * Future<Connection> future = transport.connect(ip, port);
  * final Connection connection = future.get(10, TimeUnit.SECONDS);
- * <p/>
+ * <p>
  * final TTransport ttransport = TGrizzlyClientTransport.create(connection);
  * final TProtocol tprotocol = new TBinaryProtocol(ttransport);
  * user-generated.thrift.Client client = new user-generated.thrift.Client(tprotocol);

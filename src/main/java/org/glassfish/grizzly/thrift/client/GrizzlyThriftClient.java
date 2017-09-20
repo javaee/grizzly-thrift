@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012-2014 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -96,20 +96,20 @@ import java.util.logging.Logger;
 
 /**
  * The implementation of the {@link ThriftClient} based on Grizzly
- * <p/>
+ * <p>
  * Basically, this class use {@link BaseObjectPool} for pooling connections of the thrift server
  * and {@link RoundRobinStore} for selecting the thrift server.
- * <p/>
+ * <p>
  * When a thrift operation is called,
  * 1. finding the correct server by round-robin
  * 2. borrowing the connection from the connection pool
  * 3. returning the connection to the pool
- * <p/>
+ * <p>
  * For the failback of the thrift server, {@link HealthMonitorTask} will be scheduled by {@code healthMonitorIntervalInSecs}.
  * If connecting and writing are failed, this thrift client retries failure operations by {@code retryCount}.
  * The retrial doesn't request failed server but another thrift server.
  * And this client provides {@code failover} flag which can turn off the failover/failback.
- * <p/>
+ * <p>
  * Example of use:
  * {@code
  * // creates a ThriftClientManager
@@ -127,7 +127,7 @@ import java.util.logging.Logger;
  *
  * // custom thrift operations
  * Integer result = calculatorThriftClient.execute(new ThriftClientCallback<Calculator.Client, Integer>() {
- *         @Override
+ *
  *         public Integer call(Calculator.Client client) throws TException {
  *              return client.add(1, 2);
  *         }
@@ -885,7 +885,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
 
         /**
          * Set global connect-timeout
-         * <p/>
+         * <p>
          * If the given param is negative, the timeout is infite.
          * Default is 5000.
          *
@@ -899,7 +899,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
 
         /**
          * Set global write-timeout
-         * <p/>
+         * <p>
          * If the given param is negative, the timeout is infite.
          * Default is 5000.
          *
@@ -913,7 +913,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
 
         /**
          * Set global response-timeout
-         * <p/>
+         * <p>
          * If the given param is negative, the timeout is infite.
          * Default is 10000.
          *
@@ -927,7 +927,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
 
         /**
          * Set connection pool's min
-         * <p/>
+         * <p>
          * Default is 5.
          *
          * @param minConnectionPerServer connection pool's min
@@ -941,7 +941,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
 
         /**
          * Set connection pool's max
-         * <p/>
+         * <p>
          * Default is {@link Integer#MAX_VALUE}
          *
          * @param maxConnectionPerServer connection pool's max
@@ -955,7 +955,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
 
         /**
          * Set connection pool's KeepAliveTimeout
-         * <p/>
+         * <p>
          * Default is 1800.
          *
          * @param keepAliveTimeoutInSecs connection pool's KeepAliveTimeout in seconds
@@ -969,7 +969,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
 
         /**
          * Set health monitor's interval
-         * <p/>
+         * <p>
          * This thrift client will schedule HealthMonitorTask with this interval.
          * HealthMonitorTask will check the failure servers periodically and detect the revived server.
          * If the given parameter is negative, this thrift client never schedules HealthMonitorTask
@@ -986,7 +986,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
 
         /**
          * Allow or disallow disposable connections
-         * <p/>
+         * <p>
          * Default is false.
          *
          * @param allowDisposableConnection true if this thrift client allows disposable connections
@@ -999,7 +999,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
 
         /**
          * Enable or disable the connection validation when the connection is borrowed from the connection pool
-         * <p/>
+         * <p>
          * Default is false.
          *
          * @param borrowValidation true if this thrift client should make sure the borrowed connection is valid
@@ -1012,7 +1012,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
 
         /**
          * Enable or disable the connection validation when the connection is returned to the connection pool
-         * <p/>
+         * <p>
          * Default is false.
          *
          * @param returnValidation true if this thrift client should make sure the returned connection is valid
@@ -1025,7 +1025,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
 
         /**
          * Enable or disable the keeping a server in the the round-robin list when the only one server is remained in the list.
-         * <p/>
+         * <p>
          * Default is false
          *
          * @param retainLastServer true if this thrift client should make sure the retaining one server in the round-robin list.
@@ -1049,7 +1049,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
 
         /**
          * Enable or disable failover/failback
-         * <p/>
+         * <p>
          * Default is true.
          *
          * @param failover true if this thrift client should support failover/failback when the server is failed or revived
@@ -1062,7 +1062,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
 
         /**
          * Set retry count for connection or sending
-         * <p/>
+         * <p>
          * Default is 1.
          *
          * @param retryCount the count for retrials

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012-2016 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -74,7 +74,7 @@ import java.util.logging.Logger;
 
 /**
  * Zookeeper client implementation for barrier and recoverable operation
- * <p/>
+ * <p>
  * All operations will be executed on the valid connection because the failed connection will be reconnected automatically.
  * This has Barrier function.
  * {@link BarrierListener} can be registered with a specific region and initial data by the {@link #registerBarrier} method and unregistered by the {@link #unregisterBarrier} method.
@@ -82,14 +82,13 @@ import java.util.logging.Logger;
  * If the specific data will be changed in remote zookeeper server, all clients which have joined will receive changes simultaneously.
  * If all clients receive changes successfully,
  * {@link BarrierListener#onCommit} will be called simultaneously at the scheduled time(data modification time + {@code commitDelayTimeInSecs}).
- * <p/>
+ * <p>
  * This also supports some safe APIs which is similar to original {@link ZooKeeper}'s APIs
  * like create, delete, exists, getChildren, getData and setData.
- * <p/>
+ * <p>
  * Examples of barrier's use:
  * {@code
  * // initial
- * <p/>
  * final ZKClient.Builder builder = new ZKClient.Builder("myZookeeperClient", "localhost:2181");
  * builder.rootPath(ROOT).connectTimeoutInMillis(3000).sessionTimeoutInMillis(30000).commitDelayTimeInSecs(60);
  * final ZKClient zkClient = builder.build();
@@ -100,12 +99,12 @@ import java.util.logging.Logger;
  * zkClient.unregisterBarrier( "user" );
  * zkClient.shutdown();
  * }
- * <p/>
+ * <p>
  * [NOTE]
  * Zookeeper already guides some simple barrier examples:
  * http://zookeeper.apache.org/doc/r3.3.4/zookeeperTutorial.html
  * http://code.google.com/p/good-samples/source/browse/trunk/zookeeper-3.x/src/main/java/com/googlecode/goodsamples/zookeeper/barrier/Barrier.java
- * <p/>
+ * <p>
  * But, their examples have a race condision issue:
  * https://issues.apache.org/jira/browse/ZOOKEEPER-1011
  *
@@ -167,11 +166,12 @@ public class ZKClient {
 
     /**
      * Connect this client to the zookeeper server
-     * <p/>
+     * <p>
      * this method will wait for {@link Watcher.Event.KeeperState#SyncConnected} from the zookeeper server.
      *
      * @throws IOException          the io exception of internal ZooKeeper
      * @throws InterruptedException the interrupted exception of internal ZooKeeper
+     * @return true if the client is connected. Otherwise false
      */
     public boolean connect() throws IOException, InterruptedException {
         lock.lock();

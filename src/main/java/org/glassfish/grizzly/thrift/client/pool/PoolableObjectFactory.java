@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -42,7 +42,7 @@ package org.glassfish.grizzly.thrift.client.pool;
 
 /**
  * An interface defining life-cycle methods for instances to be served by a {@link org.glassfish.grizzly.thrift.client.pool.ObjectPool}
- * <p/>
+ * <p>
  * By contract, when an {@link org.glassfish.grizzly.thrift.client.pool.ObjectPool} delegates to a {@link org.glassfish.grizzly.thrift.client.pool.PoolableObjectFactory},
  * {@link #createObject createObject} is called whenever a new instance is needed.
  * {@link #validateObject validateObject} is invoked for making sure

@@ -58,7 +58,7 @@ import org.glassfish.grizzly.filterchain.FilterChain;
 
 /**
  * TGrizzlyClientTransport is the client-side TTransport.
- * <p/>
+ * <p>
  * BlockingQueue which belongs to ThriftClientFilter has input messages when server's response are arrived.
  * Only TTransport#flush() will be called, output messages will be written. Before flush(), output messages will be stored in buffer.
  *

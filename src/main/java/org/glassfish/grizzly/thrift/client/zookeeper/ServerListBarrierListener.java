@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -219,7 +219,7 @@ public class ServerListBarrierListener implements BarrierListener {
     /**
      * Split a string in the form of "host:port, host2:port" into a Set of
      * {@link java.net.SocketAddress} instances.
-     * <p/>
+     * <p>
      * Note that colon-delimited IPv6 is also supported. For example: ::1:11211
      *
      * @param serverList server list in the form of "host:port,host2:port"
