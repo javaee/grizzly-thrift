@@ -94,7 +94,7 @@
     <properties>
         <grizzly-framework-version>2.3.33</grizzly-framework-version>
         <zookeeper-version>3.4.8</zookeeper-version>
-        <libthrift-version>0.9.1</libthrift-version>
+        <libthrift-version>0.10.0</libthrift-version>
     </properties>
     <build>
         <extensions>
