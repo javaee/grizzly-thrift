@@ -51,12 +51,12 @@ import org.glassfish.grizzly.filterchain.NextAction;
 import org.glassfish.grizzly.memory.Buffers;
 import org.glassfish.grizzly.thrift.client.GrizzlyThriftClient;
 import org.glassfish.grizzly.thrift.client.pool.ObjectPool;
-import org.glassfish.grizzly.utils.DataStructures;
 import org.glassfish.grizzly.utils.NullaryFunction;
 
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedTransferQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -106,7 +106,7 @@ public class ThriftClientFilter<T extends TServiceClient> extends BaseFilter {
             Grizzly.DEFAULT_ATTRIBUTE_BUILDER.createAttribute(INPUT_BUFFERS_QUEUE_ATTRIBUTE_NAME,
                     (NullaryFunction<BlockingQueue<Buffer>>) new NullaryFunction<BlockingQueue<Buffer>>() {
                         public BlockingQueue<Buffer> evaluate() {
-                            return DataStructures.getLTQInstance();
+                            return new LinkedTransferQueue<>();
                         }
                     });
 

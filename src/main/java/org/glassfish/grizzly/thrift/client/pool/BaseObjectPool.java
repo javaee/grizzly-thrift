@@ -41,13 +41,14 @@
 package org.glassfish.grizzly.thrift.client.pool;
 
 import org.glassfish.grizzly.Grizzly;
-import org.glassfish.grizzly.utils.DataStructures;
 
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -79,8 +80,8 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
     private final boolean disposable;
     private final long keepAliveTimeoutInSecs;
 
-    private final ConcurrentMap<K, QueuePool<V>> keyedObjectPool = DataStructures.getConcurrentMap();
-    private final ConcurrentMap<V, K> managedActiveObjects = DataStructures.getConcurrentMap();
+    private final ConcurrentMap<K, QueuePool<V>> keyedObjectPool = new ConcurrentHashMap<>();
+    private final ConcurrentMap<V, K> managedActiveObjects = new ConcurrentHashMap<>();
     private final AtomicBoolean destroyed = new AtomicBoolean();
     private final ScheduledExecutorService scheduledExecutor;
     private final ScheduledFuture<?> scheduledFuture;
@@ -568,7 +569,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
 
         private QueuePool(final int max) {
             if (max <= 0 || max == Integer.MAX_VALUE) {
-                queue = DataStructures.getLTQInstance();
+                queue = new LinkedTransferQueue<>();
             } else {
                 queue = new LinkedBlockingQueue<V>(max);
             }
