@@ -93,7 +93,7 @@
     </organization>
     <properties>
         <grizzly-framework-version>2.4.2</grizzly-framework-version>
-        <zookeeper-version>3.4.8</zookeeper-version>
+        <zookeeper-version>3.4.11</zookeeper-version>
         <libthrift-version>0.10.0</libthrift-version>
         <jdk.compile.version>1.8</jdk.compile.version>
         <maven.compiler.argument>
