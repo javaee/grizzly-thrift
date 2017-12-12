@@ -410,7 +410,9 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
             factory.destroyObject(key, value);
         } catch (Exception ignore) {
         }
-        pool.poolSizeHint.decrementAndGet();
+        if (managed != null || removed) {
+            pool.poolSizeHint.decrementAndGet();
+        }
     }
 
     /**
