@@ -153,6 +153,8 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
 
     public static final String CONNECTION_POOL_ATTRIBUTE_NAME = "GrizzlyThriftClient.ConnectionPool";
     public static final String CLIENT_ATTRIBUTE_NAME = "GrizzlyThriftClient.Client";
+    public static final String INPUT_BUFFERS_QUEUE_ATTRIBUTE_NAME = "GrizzlyThriftClient.inputBuffersQueue";
+
     private final Attribute<ObjectPool<SocketAddress, T>> connectionPoolAttribute =
             Grizzly.DEFAULT_ATTRIBUTE_BUILDER.createAttribute(CONNECTION_POOL_ATTRIBUTE_NAME);
     private final Attribute<T> clientAttribute =
@@ -306,16 +308,10 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
                         }
                         if (tTransport instanceof TGrizzlyClientTransport) {
                             final TGrizzlyClientTransport tGrizzlyClientTransport = (TGrizzlyClientTransport) tTransport;
-                            final Connection conn = tGrizzlyClientTransport.getGrizzlyConnection();
-                            if (conn != null) {
-                                AttributeHolder attributeHolder = conn.getAttributes();
-                                if (attributeHolder != null) {
-                                    attributeHolder.removeAttribute(CONNECTION_POOL_ATTRIBUTE_NAME);
-                                }
-                                attributeHolder = conn.getAttributes();
-                                if (attributeHolder != null) {
-                                    attributeHolder.removeAttribute(CLIENT_ATTRIBUTE_NAME);
-                                }
+                            final Connection connection = tGrizzlyClientTransport.getGrizzlyConnection();
+                            if (connection != null) {
+                                connectionPoolAttribute.remove(connection);
+                                clientAttribute.remove(connection);
                             }
                         }
                         tTransport.close();
@@ -449,7 +445,7 @@ public class GrizzlyThriftClient<T extends TServiceClient> implements ThriftClie
         }
         if (!forcibly) {
             if (healthMonitorTask != null && healthMonitorTask.failure(serverAddress) &&
-                    !(retainLastServer && roundRobinStore.hasOnly(serverAddress))) {
+                !(retainLastServer && roundRobinStore.hasOnly(serverAddress))) {
                 roundRobinStore.remove(serverAddress);
                 if (logger.isLoggable(Level.INFO)) {
                     logger.log(Level.INFO, "removed the server successfully. address={0}", serverAddress);

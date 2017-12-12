@@ -43,15 +43,20 @@ package org.glassfish.grizzly.thrift;
 import org.apache.thrift.transport.TTransportException;
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.Connection;
+import org.glassfish.grizzly.Grizzly;
 import org.glassfish.grizzly.GrizzlyFuture;
+import org.glassfish.grizzly.attributes.Attribute;
 import org.glassfish.grizzly.memory.MemoryManager;
+import org.glassfish.grizzly.thrift.client.GrizzlyThriftClient;
 import org.glassfish.grizzly.utils.BufferOutputStream;
 
 import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.glassfish.grizzly.Processor;
 import org.glassfish.grizzly.filterchain.FilterChain;
@@ -69,6 +74,11 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
     private static final long DEFAULT_READ_TIMEOUT_MILLIS = -1L; // never timed out
     private static final long DEFAULT_WRITE_TIMEOUT_MILLIS = -1L; // never timed out
 
+    private final Attribute<BlockingQueue<Buffer>> inputBuffersQueueAttribute =
+            Grizzly.DEFAULT_ATTRIBUTE_BUILDER.createAttribute(GrizzlyThriftClient.INPUT_BUFFERS_QUEUE_ATTRIBUTE_NAME);
+
+    private final AtomicBoolean running = new AtomicBoolean();
+
     public static TGrizzlyClientTransport create(final Connection connection) {
         return create(connection, DEFAULT_READ_TIMEOUT_MILLIS);
     }
@@ -85,7 +95,7 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
         if (!(processor instanceof FilterChain)) {
             throw new IllegalStateException("connection's processor has to be a FilterChain.");
         }
-        final FilterChain connectionFilterChain = (FilterChain) connection.getProcessor();
+        final FilterChain connectionFilterChain = (FilterChain) processor;
         final int idx = connectionFilterChain.indexOfType(ThriftClientFilter.class);
         if (idx == -1) {
             throw new IllegalStateException("connection has to have ThriftClientFilter in the FilterChain.");
@@ -95,13 +105,7 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
         if (thriftClientFilter == null) {
             throw new IllegalStateException("thriftClientFilter should not be null.");
         }
-
-        @SuppressWarnings("unchecked")
-        final BlockingQueue<Buffer> inputBuffersQueue = thriftClientFilter.getInputBuffersQueue(connection);
-        if (inputBuffersQueue == null) {
-            throw new IllegalStateException("inputBuffersQueue should not be null.");
-        }
-        return new TGrizzlyClientTransport(connection, inputBuffersQueue, readTimeoutMillis, writeTimeoutMillis);
+        return new TGrizzlyClientTransport(connection, readTimeoutMillis, writeTimeoutMillis);
     }
 
     private Buffer input = null;
@@ -112,11 +116,11 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
     private final long writeTimeoutMillis;
 
     private TGrizzlyClientTransport(final Connection connection,
-                                    final BlockingQueue<Buffer> inputBuffersQueue,
                                     final long readTimeoutMillis,
                                     final long writeTimeoutMillis) {
         this.connection = connection;
-        this.inputBuffersQueue = inputBuffersQueue;
+        this.inputBuffersQueue = new LinkedTransferQueue<>();
+        inputBuffersQueueAttribute.set(connection, this.inputBuffersQueue);
         this.outputStream = new BufferOutputStream(
                 connection.getTransport().getMemoryManager()) {
 
@@ -139,18 +143,23 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
 
     @Override
     public void close() {
+        if (!running.compareAndSet(false, true)) {
+            return;
+        }
         final Buffer output = outputStream.getBuffer();
         output.dispose();
         try {
             outputStream.close();
         } catch (IOException ignore) {
         }
+        inputBuffersQueueAttribute.remove(connection);
         inputBuffersQueue.clear();
         try {
             final GrizzlyFuture closeFuture = connection.close();
             closeFuture.get(3, TimeUnit.SECONDS);
         } catch (Exception ignore) {
         }
+        running.set(false);
     }
 
     @Override
@@ -182,7 +191,6 @@ public class TGrizzlyClientTransport extends AbstractTGrizzlyTransport {
 
     @Override
     protected Buffer getInputBuffer() throws TTransportException {
-        checkConnectionOpen();
         Buffer localInput = this.input;
         if (localInput == null) {
             localInput = getLocalInput(readTimeoutMillis);

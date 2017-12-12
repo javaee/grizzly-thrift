@@ -51,12 +51,10 @@ import org.glassfish.grizzly.filterchain.NextAction;
 import org.glassfish.grizzly.memory.Buffers;
 import org.glassfish.grizzly.thrift.client.GrizzlyThriftClient;
 import org.glassfish.grizzly.thrift.client.pool.ObjectPool;
-import org.glassfish.grizzly.utils.NullaryFunction;
 
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedTransferQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -100,15 +98,8 @@ public class ThriftClientFilter<T extends TServiceClient> extends BaseFilter {
             Grizzly.DEFAULT_ATTRIBUTE_BUILDER.createAttribute(GrizzlyThriftClient.CONNECTION_POOL_ATTRIBUTE_NAME);
     private final Attribute<T> connectionClientAttribute =
             Grizzly.DEFAULT_ATTRIBUTE_BUILDER.createAttribute(GrizzlyThriftClient.CLIENT_ATTRIBUTE_NAME);
-
-    private static final String INPUT_BUFFERS_QUEUE_ATTRIBUTE_NAME = "GrizzlyThriftClient.inputBuffersQueue";
     private final Attribute<BlockingQueue<Buffer>> inputBuffersQueueAttribute =
-            Grizzly.DEFAULT_ATTRIBUTE_BUILDER.createAttribute(INPUT_BUFFERS_QUEUE_ATTRIBUTE_NAME,
-                    (NullaryFunction<BlockingQueue<Buffer>>) new NullaryFunction<BlockingQueue<Buffer>>() {
-                        public BlockingQueue<Buffer> evaluate() {
-                            return new LinkedTransferQueue<>();
-                        }
-                    });
+            Grizzly.DEFAULT_ATTRIBUTE_BUILDER.createAttribute(GrizzlyThriftClient.INPUT_BUFFERS_QUEUE_ATTRIBUTE_NAME);
 
     static final Buffer POISON = Buffers.EMPTY_BUFFER;
 
@@ -149,20 +140,11 @@ public class ThriftClientFilter<T extends TServiceClient> extends BaseFilter {
                 } catch (Exception ignore) {
                 }
             }
-            final BlockingQueue<Buffer> inputBuffersQueue = inputBuffersQueueAttribute.get(connection);
+            final BlockingQueue<Buffer> inputBuffersQueue = inputBuffersQueueAttribute.remove(connection);
             if (inputBuffersQueue != null) {
-                inputBuffersQueue.clear();
                 inputBuffersQueue.offer(POISON);
-                inputBuffersQueueAttribute.remove(connection);
             }
         }
         return ctx.getInvokeAction();
-    }
-
-    public final BlockingQueue<Buffer> getInputBuffersQueue(final Connection connection) {
-        if (connection == null) {
-            return null;
-        }
-        return inputBuffersQueueAttribute.get(connection);
     }
 }
